@@ -68,9 +68,9 @@ for shop_id in _shop_id_series:
    _cur_shop_info = shop_info[shop_info.shopid == shop_id ]
    # print '美食'
    if str(_cur_shop_info.cate1_name.values[0]) == '美食':
-      figure_pay_path = 'food_figure\\';
+      figure_pay_path = 'rest_food_figure\\';
    else:
-      figure_pay_path = 'market_figure\\';
+      figure_pay_path = 'rest_market_figure\\';
    # print 'Figure:',figure_pay_path
    # print 'cate_name:',str(_cur_shop_info.cate1_name.values[0])
    # print _cur_shop_info
@@ -95,7 +95,8 @@ for shop_id in _shop_id_series:
    datelist_unnormal_2 = object_weather[
       (object_weather['weather_level'] == 2) | (object_weather['weather_level'] == 5)].date.values
    # datelist_5 = object_weather[object_weather['weather_level'] == 5].date.values
-   # datelist_weekend = object_weather[object_weather['weather_level'] >= 3].date.values
+   datelist_weekend = object_weather[object_weather['weather_level'] >= 3].date.values
+   datelist_holiday=object_weather[object_weather['weather_level'] < 0].date.values
    ###############################################################################################################
 
    _cur_date_series = all_view_data[all_view_data.shopid == shop_id]['time'].tolist()
@@ -122,21 +123,30 @@ for shop_id in _shop_id_series:
 
    pay_cur_date_series = _pay_series.index
    pay_cur_count_series = _pay_series.values
-   pay_count_unnormal_1=_pay_series[_pay_series.index.isin(
-      map(fc.StrDate1ToStrDate,datelist_unnormal_1))].values
-   pay_date_unnormal_1=_pay_series[_pay_series.index.isin(
-      map(fc.StrDate1ToStrDate,datelist_unnormal_1))].index
-   pay_count_unnormal_2 = _pay_series[_pay_series.index.isin(
-      map(fc.StrDate1ToStrDate, datelist_unnormal_2))].values
-   pay_date_unnormal_2 = _pay_series[_pay_series.index.isin(
-      map(fc.StrDate1ToStrDate, datelist_unnormal_2))].index
+   # pay_count_unnormal_1=_pay_series[_pay_series.index.isin(
+   #    map(fc.StrDate1ToStrDate,datelist_unnormal_1))].values
+   # pay_date_unnormal_1=_pay_series[_pay_series.index.isin(
+   #    map(fc.StrDate1ToStrDate,datelist_unnormal_1))].index
+   # pay_count_unnormal_2 = _pay_series[_pay_series.index.isin(
+   #    map(fc.StrDate1ToStrDate, datelist_unnormal_2))].values
+   # pay_date_unnormal_2 = _pay_series[_pay_series.index.isin(
+   #    map(fc.StrDate1ToStrDate, datelist_unnormal_2))].index
+   pay_count_weekend=_pay_series[_pay_series.index.isin(
+      map(fc.StrDate1ToStrDate,datelist_weekend))].values
+   pay_date_weekend=_pay_series[_pay_series.index.isin(
+      map(fc.StrDate1ToStrDate,datelist_weekend))].index
+   pay_count_holiday = _pay_series[_pay_series.index.isin(
+      map(fc.StrDate1ToStrDate, datelist_holiday ))].values
+   pay_date_holiday = _pay_series[_pay_series.index.isin(
+      map(fc.StrDate1ToStrDate, datelist_holiday ))].index
 ########################################################################################################################
    figure_name =figure_pay_path + str(shop_id) + '_view_time.png'
    view_ax.xaxis.set_major_formatter(DateFormatter('%Y-%m-%d') )
    view_ax.plot_date(view_cur_date_series,view_cur_count_series,'m--', marker='.',linewidth=0.5);
    view_ax.plot_date(pay_cur_date_series, pay_cur_count_series, 'c--', marker='.',linewidth=0.5);
-   view_ax.plot_date(pay_date_unnormal_1,pay_count_unnormal_1,color='r',marker='p')
-   view_ax.plot_date(pay_date_unnormal_2, pay_count_unnormal_2, color='y', marker='p')
+   view_ax.plot_date(pay_date_holiday,pay_count_holiday,color='r',marker='^')
+   view_ax.plot_date(pay_date_weekend,pay_count_weekend,color='y',marker='*')
+   # view_ax.plot_date(pay_date_unnormal_2, pay_count_unnormal_2, color='y', marker='p')
    print figure_name
    plt.savefig(figure_name)
    view_ax.clear()
