@@ -7,6 +7,25 @@ from  matplotlib.dates  import num2date,datestr2num,drange,DateFormatter
 import datetime
 from pylab import mpl
 
+import urllib2
+
+def judgeHoliday(query):
+    """
+        @query a single date: string eg."20160404"
+        @return day_type: 0 workday -1 holiday
+        """
+    url = 'http://www.easybots.cn/api/holiday.php?d=' + query
+    req = urllib2.Request(url)
+    resp = urllib2.urlopen(req)
+    content = resp.read()
+    if(content):
+        # 20161001:2 20161002:2 20161003:2 20161004:1
+        # "0"workday, "1"leave, "2"holiday
+        day_type = content[content.rfind(":")+2:content.rfind('"')]
+        if day_type == '0':
+            return 0
+        else:
+            return -1
 '''
 <summary>解决保存图片中文显示的问题</summary>
 <parameter>NULL</parameter>
@@ -25,14 +44,26 @@ def IsSubStr(list,fatherStr):
    for childStr in list:
       if childStr in fatherStr:
          return True
+
 def Decode(obstr):
    '''
-
    :param obstr: 目标中文字符串
    :return:解码后的中文字符串
    '''
-   return obstr.decode('gbk')
+   return obstr.decode('gb2312')
 
+def DateStr_1ToDatestr_3(datestr):
+    '''
+
+    :param datestr: format:'%Y\%m\%d'
+    :return:Ymd
+    '''
+    words=datestr.split('/')
+    if len(words[1])==1:
+        words[1]=str(0)+words[1]
+    if len(words[2])==1:
+        words[2]=str(0)+words[2]
+    return words[0]+words[1]+words[2]
 
 def numDatetoStr1(DT):
    '''
@@ -168,26 +199,40 @@ def preprocess_Weather(weather_path):
    level_2 = map(Decode, ['雨', '雪'])
    level_1 = map(Decode, ['小雨'])
    for i, row in enumerate(weather_info.weather):
+      print row.encode('utf-8')
       row_date=weather_info.loc[i].date
+      formatted_str=DateStr_1ToDatestr_3(row_date)
+      print formatted_str
+      Is_h=judgeHoliday(formatted_str)
       # print row_date
       _row_date=datetime.datetime.strptime(row_date,'%Y/%m/%d')
+
       _row_week=datetime.datetime.isoweekday(_row_date)
-      if (_row_week >= 6):                       # 周末天气正常天气等级设置为3
+
+      if IsSubStr(level_2, str(row)) and (_row_week<6):             # 非周末天气雨雪等级设置为2
+         weather_info.loc[i, 'weather_level'] = 2
+
+      if IsSubStr(level_1, str(row))  and (_row_week < 6):          # 非周末天气小雨等级设置为1
+         weather_info.loc[i, 'weather_level'] = 1
+
+      if (Is_h == -1):                                               # 假期天气正常天气等级设置为-3
+          weather_info.loc[i, 'weather_level'] = -3
+
+      if IsSubStr(level_2, str(row)) and (Is_h == -1):  # 假期天气雨雪等级设置为-1
+          weather_info.loc[i, 'weather_level'] = -1
+
+      if IsSubStr(level_1, str(row)) and (Is_h == -1):  # 假期天气小雨等级设置为-2
+          weather_info.loc[i, 'weather_level'] = -2
+
+
+      if (_row_week >= 6):                                     # 周末天气正常天气等级设置为3
             weather_info.loc[i, 'weather_level'] = 3
 
-      if IsSubStr(level_2, str(row))  and (_row_week >= 6): # 周末天气雨雪等级设置为5
+      if IsSubStr(level_2, str(row))  and (_row_week >= 6):  # 周末天气雨雪等级设置为5
          weather_info.loc[i, 'weather_level'] = 5
 
       if IsSubStr(level_1, str(row))  and (_row_week >=6):    # 周末天气小雨等级设置为4
          weather_info.loc[i, 'weather_level'] = 4
-
-      if IsSubStr(level_2, str(row)) and (_row_week<6):     # 非周末天气雨雪等级设置为2
-         weather_info.loc[i, 'weather_level'] = 2
-
-      if IsSubStr(level_1, str(row))  and (_row_week < 6):   # 非周末天气小雨等级设置为1
-         weather_info.loc[i, 'weather_level'] = 1
-
-
    weather_info.to_csv('data\\weather_info.csv', encoding='gb2312', index=False)
 # preprocess_Weather('data\\ijcai17-weather_1.csv')
 def DatetoStr(DT):
@@ -424,4 +469,4 @@ def Draw_Figure_weekend(pay_data, all_view_data, weather_info, shop_id):
       view_ax.clear()
       del view_ax
       del fig
-set_ch()
+# set_ch()
