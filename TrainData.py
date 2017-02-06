@@ -128,7 +128,7 @@ for i,shop_id in enumerate(shop_id_Series):
         view_tem_series[time_item]=cur_view_series[time_item]
 
     for time_item in pay_time_list:
-        dateDay=ddt.strptime(time_item,'%Y/%m/%d')
+        dateDay=ddt.strptime(time_item,'%Y-%m-%d')
         cur_count=pay_tem_series[time_item]
         cur_weekday=ddt.isoweekday(dateDay)
 
