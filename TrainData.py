@@ -32,36 +32,7 @@ namelist=['weekday','day_1','day_2','day_3','day_4','day_5','day_6','day_7','sam
           'day_1_weather','day_2_weather','day_3_weather','day_4_weather','day_5_weather','day_6_weather',
           'day_7_weather','same_day_weather']
 
-weekday=[]
-pay_day_1=[]
-pay_day_2=[]
-pay_day_3=[]
-pay_day_4=[]
-pay_day_5=[]
-pay_day_6=[]
-pay_day_7=[]
-pay_same_day=[]
 
-view_day_1=[]
-view_day_2=[]
-view_day_3=[]
-view_day_4=[]
-view_day_5=[]
-view_day_6=[]
-view_day_7=[]
-
-
-
-
-day_1_weather=[]
-day_2_weather=[]
-day_3_weather=[]
-day_4_weather=[]
-day_5_weather=[]
-day_6_weather=[]
-day_7_weather=[]
-same_day_weather=[]
-labellist=[]
 # train_data=pd.DataFrame(names=namelist)
 # print train_data
 shop_path='data/shop_info.txt'
@@ -87,17 +58,45 @@ user_view_info=pd.read_csv(user_view_path)
 
 
 for i,shop_id in enumerate(shop_id_Series):
+    weekday = []
+    pay_day_1 = []
+    pay_day_2 = []
+    pay_day_3 = []
+    pay_day_4 = []
+    pay_day_5 = []
+    pay_day_6 = []
+    pay_day_7 = []
+    pay_same_day = []
+
+    view_day_1 = []
+    view_day_2 = []
+    view_day_3 = []
+    view_day_4 = []
+    view_day_5 = []
+    view_day_6 = []
+    view_day_7 = []
+
+    day_1_weather = []
+    day_2_weather = []
+    day_3_weather = []
+    day_4_weather = []
+    day_5_weather = []
+    day_6_weather = []
+    day_7_weather = []
+    same_day_weather = []
+    labellist = []
+
     print 'shopId:',shop_id
     cate1=str(shop_info[shop_info.shop_id==shop_id].cate1_name.values[0])
     # if shop_id<1636:
     #     continue
     if cate1=='美食':
-        father_path='food1_csvfile\\'
+        father_path='food_csvfile1\\'
     else:
         if cate1=='超市便利店':
-           father_path = 'supermarket1_csvfile\\'
+           father_path = 'supermarket_csvfile1\\'
         else:
-            father_path = 'other_csvfile\\'
+            father_path = 'other_csvfile1\\'
 
     pay_time_list=user_pay_info[user_pay_info['shopid']==shop_id]['time'].tolist()
     pay_count_list=user_pay_info[user_pay_info['shopid']==shop_id]['count'].tolist()
@@ -133,13 +132,13 @@ for i,shop_id in enumerate(shop_id_Series):
         cur_weekday=ddt.isoweekday(dateDay)
 
 
-        week7_date = dateDay - datetime.timedelta(days=(cur_weekday + 1))
-        week6_date = dateDay - datetime.timedelta(days=(cur_weekday + 2))
-        week5_date = dateDay - datetime.timedelta(days=(cur_weekday + 3))
-        week4_date = dateDay - datetime.timedelta(days=(cur_weekday + 4))
-        week3_date = dateDay - datetime.timedelta(days=(cur_weekday + 5))
-        week2_date = dateDay - datetime.timedelta(days=(cur_weekday + 6))
-        week1_date = dateDay - datetime.timedelta(days=(cur_weekday + 7))
+        week7_date = dateDay - datetime.timedelta(days=(cur_weekday + 0))
+        week6_date = dateDay - datetime.timedelta(days=(cur_weekday + 1))
+        week5_date = dateDay - datetime.timedelta(days=(cur_weekday + 2))
+        week4_date = dateDay - datetime.timedelta(days=(cur_weekday + 3))
+        week3_date = dateDay - datetime.timedelta(days=(cur_weekday + 4))
+        week2_date = dateDay - datetime.timedelta(days=(cur_weekday + 5))
+        week1_date = dateDay - datetime.timedelta(days=(cur_weekday + 6))
         same_date =  dateDay - datetime.timedelta(days=14)
 
         week7_datestr = ddt.strftime(week7_date, '%Y/%m/%d')
@@ -336,7 +335,34 @@ for i,shop_id in enumerate(shop_id_Series):
               'count':labellist
      }
 
-    cur_path=father_path+str(shop_id)+'trainset.csv'
+    del weekday
+    del pay_day_1
+    del pay_day_2
+    del pay_day_3
+    del pay_day_4
+    del pay_day_5
+    del pay_day_6
+    del pay_day_7
+    del pay_same_day
+
+    del view_day_1
+    del view_day_2
+    del view_day_3
+    del view_day_4
+    del view_day_5
+    del view_day_6
+    del view_day_7
+
+    del day_1_weather
+    del day_2_weather
+    del day_3_weather
+    del day_4_weather
+    del day_5_weather
+    del day_6_weather
+    del day_7_weather
+    del same_day_weather
+    del labellist
+    cur_path=father_path+str(shop_id)+'_trainset.csv'
     cur_df=pd.DataFrame(trainSet)
     cur_df.to_csv(cur_path,index=True)
 
