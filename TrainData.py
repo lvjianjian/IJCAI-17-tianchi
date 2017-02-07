@@ -41,7 +41,7 @@ shop_info=pd.read_csv(shop_path,names=['shop_id','city_name','location_id','per_
 
 
 shop_id_Series=shop_info['shop_id'].values
-user_pay_path='data/user_pay_afterGrouping.csv'
+user_pay_path='data/user_pay_afterGroupingAndRevision.csv'
 user_view_path='data/user_view_afterGrouping.csv'
 weather_path='data/weather_info.csv'
 weather_info=pd.read_csv(weather_path,encoding='gb2312')
@@ -91,12 +91,12 @@ for i,shop_id in enumerate(shop_id_Series):
     # if shop_id<1636:
     #     continue
     if cate1=='美食':
-        father_path='food_csvfile1\\'
+        father_path='food_csvfile2\\'
     else:
         if cate1=='超市便利店':
-           father_path = 'supermarket_csvfile1\\'
+           father_path = 'supermarket_csvfile2\\'
         else:
-            father_path = 'other_csvfile1\\'
+            father_path = 'other_csvfile2\\'
 
     pay_time_list=user_pay_info[user_pay_info['shopid']==shop_id]['time'].tolist()
     pay_count_list=user_pay_info[user_pay_info['shopid']==shop_id]['count'].tolist()
