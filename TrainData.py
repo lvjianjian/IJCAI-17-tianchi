@@ -13,6 +13,11 @@ import function_collection as fc
 from pylab import mpl
 fc.set_ch()
 def RemoveDatezero(datestr):
+    '''
+
+    :param datestr:%Y/%m/%d
+    :return: 去掉日期个位数的0开头
+    '''
     words=datestr.split('/')
     if words[1][0]=='0':
         words[1]=words[1][1]
@@ -20,7 +25,21 @@ def RemoveDatezero(datestr):
         words[2]=words[2][1]
     return words[0]+'/'+words[1]+'/'+words[2]
 
+def RemoveDateSm(datestr):
+    '''
+
+    :param datestr: %Y/%m/%d（有0）
+    :return: 去掉反斜杠
+    '''
+    words=datestr.split('/')
+    return words[0] +  words[1] + words[2]
+
 def transferNum(level):
+    '''
+    将天气等级转化为0,1,2
+    :param level:
+    :return:
+    '''
     if level==-3 or (level==0 or level==3):
         return 0
     if level==-2 or (level==1 or level==4):
@@ -40,6 +59,9 @@ shop_info=pd.read_csv(shop_path,names=['shop_id','city_name','location_id','per_
                                        'comment_cnt','shop_level','cate1_name','cate2_name','cate3_name'])
 
 
+holiday_path='data/holiday.csv'
+holiday_info=pd.read_csv(holiday_path,names=['date','flag'])
+# print type(holiday_info['date'].values[0])
 shop_id_Series=shop_info['shop_id'].values
 user_pay_path='data/user_pay_afterGroupingAndRevision.csv'
 user_view_path='data/user_view_afterGrouping.csv'
@@ -49,12 +71,7 @@ weather_info=pd.read_csv(weather_path,encoding='gb2312')
 # print type(weather_info[weather_info['area']=='三明'].weather_level.values[0])
 user_pay_info=pd.read_csv(user_pay_path)
 user_view_info=pd.read_csv(user_view_path)
-# Datatime_Series = pd.DatetimeIndex(['2015/2/1', '2016/2/1'])
-# print type(Datatime_Series[0])
-# print datetime.datetime.strftime(Datatime_Series[1]-datetime.timedelta(days=365),'%Y/%m/%d')
-# time.timed
-# print map(datetime.datetime.isoweekday,Datatime_Series)
-# print datetime.timedelta(days=365)==Datatime_Series[1]-Datatime_Series[0]
+
 
 
 for i,shop_id in enumerate(shop_id_Series):
@@ -67,6 +84,16 @@ for i,shop_id in enumerate(shop_id_Series):
     pay_day_6 = []
     pay_day_7 = []
     pay_same_day = []
+
+    IsHoliday=[]
+    IsHoliday_day_1 = []
+    IsHoliday_day_2 = []
+    IsHoliday_day_3 = []
+    IsHoliday_day_4 = []
+    IsHoliday_day_5 = []
+    IsHoliday_day_6 = []
+    IsHoliday_day_7 = []
+    IsHoliday_same_day = []
 
     view_day_1 = []
     view_day_2 = []
@@ -91,12 +118,12 @@ for i,shop_id in enumerate(shop_id_Series):
     # if shop_id<1636:
     #     continue
     if cate1=='美食':
-        father_path='food_csvfile2\\'
+        father_path='food_csvfile_holiday1\\'
     else:
         if cate1=='超市便利店':
-           father_path = 'supermarket_csvfile2\\'
+           father_path = 'supermarket_csvfile_holiday1\\'
         else:
-            father_path = 'other_csvfile2\\'
+            father_path = 'other_csvfile_holiday1\\'
 
     pay_time_list=user_pay_info[user_pay_info['shopid']==shop_id]['time'].tolist()
     pay_count_list=user_pay_info[user_pay_info['shopid']==shop_id]['count'].tolist()
@@ -279,7 +306,56 @@ for i,shop_id in enumerate(shop_id_Series):
             sameday_weather = sameday_weather[0]
 
 #########################################################################################################################
+        start_date=ddt.strptime('2015/7/1','%Y/%m/%d')
+        end_date=ddt.strptime('2016/10/31','%Y/%m/%d')
+        # print ddt.strftime(week7_date,'%Y%m%d')
+        if week7_date >= start_date:
+            Isholiday_day_7 = holiday_info[holiday_info['date']==int(ddt.strftime(week7_date,'%Y%m%d'))].flag.values[0]
+        else:
+            Isholiday_day_7 = np.nan
 
+        if week6_date >= start_date:
+            Isholiday_day_6 = holiday_info[holiday_info.date==int(ddt.strftime(week6_date,'%Y%m%d'))].flag.values[0]
+        else:
+            Isholiday_day_6 = np.nan
+
+        if week5_date >= start_date:
+            Isholiday_day_5 = holiday_info[holiday_info.date == int(ddt.strftime(week5_date, '%Y%m%d'))].flag.values[0]
+        else:
+            Isholiday_day_5 = np.nan
+
+        if week4_date >= start_date:
+            Isholiday_day_4 = holiday_info[holiday_info['date'] == int(ddt.strftime(week4_date, '%Y%m%d'))].flag.values[0]
+        else:
+            Isholiday_day_4 = np.nan
+
+        if week3_date >= start_date:
+            Isholiday_day_3 = holiday_info[holiday_info.date ==int(ddt.strftime(week3_date, '%Y%m%d'))].flag.values[0]
+        else:
+            Isholiday_day_3 = np.nan
+
+        if week2_date >= start_date:
+            Isholiday_day_2 = holiday_info[holiday_info.date == int(ddt.strftime(week2_date, '%Y%m%d'))].flag.values[0]
+        else:
+            Isholiday_day_2 = np.nan
+
+        if week1_date >= start_date:
+            Isholiday_day_1 = holiday_info[holiday_info.date == int(ddt.strftime(week1_date, '%Y%m%d'))].flag.values[0]
+        else:
+            Isholiday_day_1 = np.nan
+
+
+        if same_date >= start_date:
+            Isholiday_day_same = holiday_info[holiday_info.date == int(ddt.strftime(same_date, '%Y%m%d'))].flag.values[0]
+        else:
+            Isholiday_day_same = np.nan
+
+        if dateDay >= start_date:
+            Isholiday = holiday_info[holiday_info.date == int(ddt.strftime(dateDay, '%Y%m%d'))].flag.values[0]
+        else:
+            Isholiday = np.nan
+
+#########################################################################################################################
         pay_day_1.append(pay_week1_count)
         pay_day_2.append(pay_week2_count)
         pay_day_3.append(pay_week3_count)
@@ -297,7 +373,15 @@ for i,shop_id in enumerate(shop_id_Series):
         view_day_6.append(view_week6_count)
         view_day_7.append(view_week7_count)
 
-
+        IsHoliday_day_1.append(Isholiday_day_1)
+        IsHoliday_day_2.append(Isholiday_day_2)
+        IsHoliday_day_3.append(Isholiday_day_3)
+        IsHoliday_day_4.append(Isholiday_day_4)
+        IsHoliday_day_5.append(Isholiday_day_5)
+        IsHoliday_day_6.append(Isholiday_day_6)
+        IsHoliday_day_7.append(Isholiday_day_7)
+        IsHoliday_same_day.append(Isholiday_day_same)
+        IsHoliday.append(Isholiday)
 
         day_1_weather.append(week1_weather)
         day_2_weather.append(week2_weather)
@@ -307,6 +391,10 @@ for i,shop_id in enumerate(shop_id_Series):
         day_6_weather.append(week6_weather)
         day_7_weather.append(week7_weather)
         same_day_weather.append(sameday_weather)
+
+
+
+
     trainSet={
               'weekday':weekday,
               'pay_day1':pay_day_1,
@@ -332,7 +420,16 @@ for i,shop_id in enumerate(shop_id_Series):
               'view_day5':view_day_5,
               'view_day6':view_day_6,
               'view_day7':view_day_7,
-              'count':labellist
+              'count':labellist,
+              'ishoiday1':IsHoliday_day_1,
+              'ishoiday2':IsHoliday_day_2,
+              'ishoiday3':IsHoliday_day_3,
+              'ishoiday4':IsHoliday_day_4,
+              'ishoiday5':IsHoliday_day_5,
+              'ishoiday6':IsHoliday_day_6,
+              'ishoiday7':IsHoliday_day_7,
+              'ishoidaysame':IsHoliday_same_day,
+              'isholiday':IsHoliday
      }
 
     del weekday
@@ -361,6 +458,15 @@ for i,shop_id in enumerate(shop_id_Series):
     del day_6_weather
     del day_7_weather
     del same_day_weather
+    del IsHoliday_day_1
+    del IsHoliday_day_2
+    del IsHoliday_day_3
+    del IsHoliday_day_4
+    del IsHoliday_day_5
+    del IsHoliday_day_6
+    del IsHoliday_day_7
+    del IsHoliday_same_day
+    del IsHoliday
     del labellist
     cur_path=father_path+str(shop_id)+'_trainset.csv'
     cur_df=pd.DataFrame(trainSet)
