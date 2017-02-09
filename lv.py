@@ -202,10 +202,10 @@ def predictOneShopInTrain(shop_feature_path, feature_size):
     train_y = feature["count"][:x.shape[0]-14]
     test_y = feature["count"][x.shape[0]-14:]
     clf.fit(train_x, train_y)
-    return [clf.predict(test_x),test_y]
+    return [toInt(clf.predict(test_x)),test_y]
 
 
-def predict_all_in_train(version, feature_size):
+def predict_all_in_train(version, feature_size,save_filename = None):
     """
     线性模型预测所有商店
     用训练集非后14天为训练集，预测后14天的值
@@ -217,12 +217,15 @@ def predict_all_in_train(version, feature_size):
     other_path = "other_csvfile" + str(version)
     market_path = "supermarket_csvfile" + str(version)
     paths = [food_path,other_path,market_path]
+    result = np.zeros((2000,15))
+    i = 0
     import os
     real = None
     predict = None
     for path in paths:
         csvfiles = os.listdir(path)
         for filename in csvfiles:
+            id = int(filename.split("_")[0])
             predictAndReal = predictOneShopInTrain(path + "/" + filename, feature_size)
             if real is None:
                 real = predictAndReal[1].values
@@ -232,13 +235,21 @@ def predict_all_in_train(version, feature_size):
                 predict = predictAndReal[0]
             else:
                 predict = np.insert(predict,len(predict),predictAndReal[0])
-    return [predict, real]
+            result[i] = np.insert(predictAndReal[0],0,id)
+            i += 1
+    result = pd.DataFrame(result.astype(np.int))
+    result = result.sort_values(by=0).values
+    if(save_filename is not None):
+        np.savetxt(save_filename,result,delimiter=",",fmt='%d')
+    return [predict,real,result]
 
 
 
 
 if __name__ == "__main__":
     # predict_all(version=2,feature_size=4,save_filename="result/result_revise_f4.csv")
-    # print predictOneShop("food_csvfile2/1243_trainset.csv",feature_size=4)
-    prediceAndReal = predict_all_in_train(version=1, feature_size=4)
+    # print predictOneShop("food_csvfile2/1243_trainset.csv",feature_size=2)
+    # print predictOneShopInTrain("food_csvfile2/1243_trainset.csv",feature_size=2)[0]
+    prediceAndReal = predict_all_in_train(version=2, feature_size=2,save_filename="result_revise_f2.csv")
     print score(prediceAndReal[0], prediceAndReal[1])
+    # print prediceAndReal[2]
