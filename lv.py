@@ -63,7 +63,7 @@ def predictOneShop(shop_feature_path, feature_size):
     n_sample = feature.shape[0]
     x = np.zeros((n_sample, feature_size))
     mean=feature["count"].mean()
-    var=feature["count"].var()
+    std=feature["count"].std()
     #构造4个特征，分别是上周那天的值，上上周那天的值，上周平均值和上周方差
     for i in range(n_sample):
         day = weekday[i]
@@ -74,15 +74,13 @@ def predictOneShop(shop_feature_path, feature_size):
         if feature_size == 4:
             last_mean = pays.ix[i][1:8].mean() #计算上一周平均值
             x[i][2] = mean if isInvalid(last_mean) else last_mean
-            last_var = pays.ix[i][1:8].var()#计算上一周方差
-            x[i][3] = var if isInvalid(last_var) else last_var
+            last_std = pays.ix[i][1:8].std()#计算上一周方差
+            x[i][3] = std if isInvalid(last_std) else last_std
 
     train_x = x[:]
     train_y = feature["count"][:]
-
     #提取要预测的14天的特征，先提取前6天的值,也就是星期2到星期7
     test_x1 = np.zeros((6, feature_size))
-
     #预测第一天为周二，使用周一的数据即可
     for i in range(6):
         last_pay = pays.ix[n_sample - 1]["pay_day"+str(i+2)]
@@ -93,12 +91,14 @@ def predictOneShop(shop_feature_path, feature_size):
             test_x1[i][2] = x[n_sample - 1][2]
             test_x1[i][3] = x[n_sample - 1][3]
     clf.fit(train_x, train_y)
+    # print test_x1
     #先预测周二至周六的值
     test_y1 = clf.predict(test_x1)
-    #加上周一的值，计算均值和方差
+    # print test_y1
+    #加上周一的值，计算均值和标准差
     week_count = np.insert(test_y1,0,feature["count"][n_sample - 1])
     week_mean = week_count.mean()
-    week_var = week_count.var()
+    week_std = week_count.std()
     #接下来的周一到周7
     test_x2 = np.zeros((7,feature_size))
     for i in range(7):
@@ -112,10 +112,10 @@ def predictOneShop(shop_feature_path, feature_size):
             test_x2[i][1] = mean if isInvalid(last_last_pay) else last_last_pay #上上周那天的值
         if feature_size == 4:
             test_x2[i][2] = week_mean
-            test_x2[i][3] = week_var
+            test_x2[i][3] = week_std
     text_y2 = clf.predict(test_x2)
     week_mean = text_y2.mean()
-    week_var = text_y2.var()
+    week_std = text_y2.std()
     #最后预测最后一个周一的值
     test_x3 = np.zeros((1,feature_size))
     if feature_size >= 2:
@@ -123,7 +123,7 @@ def predictOneShop(shop_feature_path, feature_size):
         test_x3[0][1] = mean if isInvalid(test_x2[0][0]) else test_x2[0][0]
     if feature_size == 4:
         test_x3[0][2] = week_mean
-        test_x3[0][3] = week_var
+        test_x3[0][3] = week_std
     test_y3 = clf.predict(test_x3)
     last_y = np.insert(test_y1,len(test_y1),text_y2)
     last_y = np.insert(last_y,len(last_y),test_y3)
@@ -154,13 +154,17 @@ def predict_all(version,feature_size,save_filename):
             i += 1
     result = pd.DataFrame(result.astype(np.int))
     result = result.sort_values(by=0).values
-    np.savetxt(save_filename,result,delimiter=",",fmt='%d')
+    if(save_filename is not None):
+        np.savetxt(save_filename,result,delimiter=",",fmt='%d')
+    else:
+        print result
+    return result
 
 
 def predictOneShopInTrain(shop_feature_path, feature_size):
     """
     线性模型预测单个商店
-    用训练集非后7天为训练集，预测后7天的值
+    用训练集非后14天为训练集，预测后14天的值
     :param shop_feature_path:
     :param feature_size:
     :return:
@@ -179,7 +183,7 @@ def predictOneShopInTrain(shop_feature_path, feature_size):
     x = np.zeros((n_sample, feature_size))
 
     mean=feature["count"].mean()
-    var=feature["count"].var()
+    std=feature["count"].std()
     #构造4个特征，分别是上周那天的值，上上周那天的值，上周平均值和上周方差
     for i in range(n_sample):
         day = weekday[i]
@@ -190,13 +194,13 @@ def predictOneShopInTrain(shop_feature_path, feature_size):
         if feature_size == 4:
             last_mean = pays.ix[i][1:8].mean() #计算上一周平均值
             x[i][2] = mean if isInvalid(last_mean) else last_mean
-            last_var = pays.ix[i][1:8].var()#计算上一周方差
-            x[i][3] = var if isInvalid(last_var) else last_var
+            last_std = pays.ix[i][1:8].std()#计算上一周方差
+            x[i][3] = std if isInvalid(last_std) else last_std
 
-    train_x = x[:x.shape[0]-7]
-    test_x = x[x.shape[0]-7:]
-    train_y = feature["count"][:x.shape[0]-7]
-    test_y = feature["count"][x.shape[0]-7:]
+    train_x = x[:x.shape[0]-14]
+    test_x = x[x.shape[0]-14:]
+    train_y = feature["count"][:x.shape[0]-14]
+    test_y = feature["count"][x.shape[0]-14:]
     clf.fit(train_x, train_y)
     return [clf.predict(test_x),test_y]
 
@@ -204,7 +208,7 @@ def predictOneShopInTrain(shop_feature_path, feature_size):
 def predict_all_in_train(version, feature_size):
     """
     线性模型预测所有商店
-    用训练集非后7天为训练集，预测后7天的值
+    用训练集非后14天为训练集，预测后14天的值
     :param version:
     :param feature_size:
     :return:
@@ -234,6 +238,7 @@ def predict_all_in_train(version, feature_size):
 
 
 if __name__ == "__main__":
-    predict_all(version=2,feature_size=2,save_filename="result/result_revise_f2.csv")
-    # prediceAndReal = predict_all_in_train(version=2, feature_size=4)
-    # print score(prediceAndReal[0], prediceAndReal[1])
+    # predict_all(version=2,feature_size=4,save_filename="result/result_revise_f4.csv")
+    # print predictOneShop("food_csvfile2/1243_trainset.csv",feature_size=4)
+    prediceAndReal = predict_all_in_train(version=1, feature_size=4)
+    print score(prediceAndReal[0], prediceAndReal[1])

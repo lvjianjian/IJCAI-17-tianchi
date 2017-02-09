@@ -51,11 +51,11 @@ def isWeekend(dataString):
 
 def revise1(x,weekday__mean,weekday__std):
     """
-     1.对异常值用均值修正,如果当前值与平均值的差大于3倍方差时被均值代替
+     1.对异常值用均值修正,如果当前值与平均值的差大于3倍标准差时被均值代替
      2.对本应该休息却工作或者本应该工作却休息的值用均值代替
     :param x: 一行数据
     :param weekday__mean: 一周中每天的均值(即星期一道星期天的各自均值)
-    :param weekday__std: 一周中每天的方差(即星期一道星期天的各自方差)
+    :param weekday__std: 一周中每天的标准差(即星期一道星期天的各自标准差)
     :return:
     """
     weekday = x["weekday"]
@@ -68,9 +68,12 @@ def revise1(x,weekday__mean,weekday__std):
         #本应该休息却工作或者本应该工作却休息
         current = mean
 
-    if(abs(current - mean)> 3 * std): #大于3倍方差了
+    if(abs(current - mean)> 3 * std): #大于3倍标准差了
         current = mean
     return current
+
+
+
 
 if __name__ == "__main__":
     pay_info = pd.read_csv("data/user_pay_afterGrouping.csv")
