@@ -278,6 +278,36 @@ def predictOneShop(shop_feature_path, feature_size):
     last_y = np.insert(last_y,len(last_y),(test_y3 + test_y2[0])/2)
     return removeNegetive(toInt(last_y))
 
+def predict_all_Lasso(version,feature_size,save_filename):
+    """
+    线性模型预测所有商店后14天的值
+    :param version:
+    :param feature_size:
+    :param save_filename:
+    :return:
+    """
+    food_path="food_csvfile" + str(version)
+    other_path = "other_csvfile" + str(version)
+    market_path = "supermarket_csvfile" + str(version)
+    paths = [food_path,other_path,market_path]
+    result = np.zeros((2000,15))
+    i = 0
+    import os
+    for path in paths:
+        csvfiles = os.listdir(path)
+        for filename in csvfiles:
+            id = int(filename.split("_")[0])
+            predict = predictOneShop_Lasso(path + "/" + filename, feature_size)
+            result[i] = np.insert(predict,0,id)
+            i += 1
+    result = pd.DataFrame(result.astype(np.int))
+    result = result.sort_values(by=0).values
+    if(save_filename is not None):
+        np.savetxt(save_filename,result,delimiter=",",fmt='%d')
+    else:
+        print result
+    return result
+
 
 def predict_all(version,feature_size,save_filename):
     """
