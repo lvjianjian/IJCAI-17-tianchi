@@ -43,6 +43,18 @@ def toInt(x):
         x[i] = int(round(x[i]))
     return x
 
+
+def removeNegetive(x):
+    """
+    去除负数，用1代替
+    :param x:
+    :return:
+    """
+    for i in range(x.shape[0]):
+       if(x[i]<0):
+           x[i] = 1
+    return x
+
 def predictOneShop(shop_feature_path, feature_size):
     """
     线性模型预测单个商店后14天的值
@@ -64,7 +76,7 @@ def predictOneShop(shop_feature_path, feature_size):
     x = np.zeros((n_sample, feature_size))
     mean=feature["count"].mean()
     std=feature["count"].std()
-    #构造4个特征，分别是上周那天的值，上上周那天的值，上周平均值和上周方差
+    #构造4个特征，分别是上周那天的值，上上周那天的值，上周平均值和上周标准差
     for i in range(n_sample):
         day = weekday[i]
         last_pay = pays.ix[i][day] #上周那天的值
@@ -97,6 +109,11 @@ def predictOneShop(shop_feature_path, feature_size):
     # print test_y1
     #加上周一的值，计算均值和标准差
     week_count = np.insert(test_y1,0,feature["count"][n_sample - 1])
+    #对预测的一周额外进行滤波修正
+    """这里多加了预测值额外滤波修正"""
+    for i in range(len(week_count)):
+        week_count[i] = (week_count[i]+pays.ix[n_sample-2][1:8][i])/2
+    #对预测的一周额外进行滤波修正结束
     week_mean = week_count.mean()
     week_std = week_count.std()
     #接下来的周一到周7
@@ -113,26 +130,37 @@ def predictOneShop(shop_feature_path, feature_size):
         if feature_size == 4:
             test_x2[i][2] = week_mean
             test_x2[i][3] = week_std
-    text_y2 = clf.predict(test_x2)
-    week_mean = text_y2.mean()
-    week_std = text_y2.std()
+    test_y2 = clf.predict(test_x2)
+    week_count2 = test_y2.copy()
+    #对预测的一周额外进行滤波修正
+    """这里多加了预测值额外滤波修正"""
+    last_weekday = np.insert(test_y1,0,feature["count"][n_sample - 1])
+    for i in range(len(week_count2)):
+        week_count2[i] = (week_count2[i]+last_weekday[i])/2
+    #对预测的一周额外进行滤波修正结束
+    week_mean = week_count2.mean()
+    week_std = week_count2.std()
     #最后预测最后一个周一的值
     test_x3 = np.zeros((1,feature_size))
     if feature_size >= 2:
-        test_x3[0][0] = mean if isInvalid(text_y2[0]) else text_y2[0]
+        test_x3[0][0] = mean if isInvalid(week_count2[0]) else week_count2[0]
         test_x3[0][1] = mean if isInvalid(test_x2[0][0]) else test_x2[0][0]
     if feature_size == 4:
         test_x3[0][2] = week_mean
         test_x3[0][3] = week_std
     test_y3 = clf.predict(test_x3)
-    last_y = np.insert(test_y1,len(test_y1),text_y2)
-    last_y = np.insert(last_y,len(last_y),test_y3)
-    return toInt(last_y)
+    # last_y = np.insert(test_y1,len(test_y1),test_y2)
+    # last_y = np.insert(last_y,len(last_y),test_y3)
+    """这里用预测修正后的值作为最后结果"""
+    week_count = week_count[1:7]
+    last_y = np.insert(week_count,len(week_count),week_count2)
+    last_y = np.insert(last_y,len(last_y),(test_y3 + test_y2[0])/2)
+    return removeNegetive(toInt(last_y))
 
 
 def predict_all(version,feature_size,save_filename):
     """
-    线性模型预测单个商店后14天的值
+    线性模型预测所有商店后14天的值
     :param version:
     :param feature_size:
     :param save_filename:
@@ -235,21 +263,21 @@ def predict_all_in_train(version, feature_size,save_filename = None):
                 predict = predictAndReal[0]
             else:
                 predict = np.insert(predict,len(predict),predictAndReal[0])
-            result[i] = np.insert(predictAndReal[0],0,id)
+            result[i] = np.insert(predictAndReal[0], 0, id)
             i += 1
     result = pd.DataFrame(result.astype(np.int))
     result = result.sort_values(by=0).values
     if(save_filename is not None):
         np.savetxt(save_filename,result,delimiter=",",fmt='%d')
-    return [predict,real,result]
+    return [predict, real, result]
 
 
 
 
 if __name__ == "__main__":
-    # predict_all(version=2,feature_size=4,save_filename="result/result_revise_f4.csv")
-    # print predictOneShop("food_csvfile2/1243_trainset.csv",feature_size=2)
+    predict_all(version=3, feature_size=2, save_filename="result/result_meanfilter_extra_resultfilter_f2.csv")
+    # print predictOneShop("food_csvfile3/1_trainset.csv",feature_size=2)
     # print predictOneShopInTrain("food_csvfile2/1243_trainset.csv",feature_size=2)[0]
-    prediceAndReal = predict_all_in_train(version=2, feature_size=2,save_filename="result_revise_f2.csv")
-    print score(prediceAndReal[0], prediceAndReal[1])
+    # prediceAndReal = predict_all_in_train(version=3, feature_size=4)
+    # print score(prediceAndReal[0], prediceAndReal[1])
     # print prediceAndReal[2]
