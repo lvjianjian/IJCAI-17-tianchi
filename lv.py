@@ -3,7 +3,9 @@
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
-
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import  Lasso
+from sklearn.linear_model import LassoCV
 
 
 def isInvalid(value):
@@ -54,6 +56,125 @@ def removeNegetive(x):
        if(x[i]<0):
            x[i] = 1
     return x
+
+def predictOneShop_Lasso(shop_feature_path, feature_size):
+    """
+    L1正则化线性模型预测单个商店后14天的值
+    :param shop_feature_path:
+    :param feature_size:
+    :return:
+    """
+    #线性回归
+    # clf = LinearRegression()
+
+
+    feature = pd.read_csv(shop_feature_path)
+
+    #上周一到周7各列各列，对应下标1到7
+    pays = feature[["count","pay_day1","pay_day2","pay_day3","pay_day4","pay_day5","pay_day6","pay_day7"]]
+    #周几那列
+    weekday=feature["weekday"]
+    #上上周那列
+    same_day=feature["same_day"]
+    n_sample = feature.shape[0]
+    x = np.zeros((n_sample, feature_size))
+    mean=feature["count"].mean()
+    std=feature["count"].std()
+    #构造4个特征，分别是上周那天的值，上上周那天的值，上周平均值和上周标准差
+    for i in range(n_sample):
+        day = weekday[i]
+        last_pay = pays.ix[i][day] #上周那天的值
+        if feature_size >= 2:
+            x[i][0] = mean if isInvalid(last_pay)  else last_pay #无效暂由均值替代
+            x[i][1] = mean if isInvalid(same_day[i]) else same_day[i] #上上周那天的值
+        if feature_size == 4:
+            last_mean = pays.ix[i][1:8].mean() #计算上一周平均值
+            x[i][2] = mean if isInvalid(last_mean) else last_mean
+            last_std = pays.ix[i][1:8].std()#计算上一周方差
+            x[i][3] = std if isInvalid(last_std) else last_std
+
+    train_x = x[:]
+    train_y = feature["count"][:]
+    #提取要预测的14天的特征，先提取前6天的值,也就是星期2到星期7
+    test_x1 = np.zeros((6, feature_size))
+    #预测第一天为周二，使用周一的数据即可
+    for i in range(6):
+        last_pay = pays.ix[n_sample - 1]["pay_day"+str(i+2)]
+        if feature_size >= 2:
+            test_x1[i][0] = mean if isInvalid(last_pay) else last_pay #无效暂由均值替代
+            test_x1[i][1] = mean if isInvalid(x[n_sample - 7 + i][0]) else x[n_sample - 7 + i][0] #上上周那天的值
+        if feature_size == 4:
+            test_x1[i][2] = x[n_sample - 1][2]
+            test_x1[i][3] = x[n_sample - 1][3]
+    # clf.fit(train_x, train_y)
+    #标准化处理器
+    scaler = StandardScaler().fit(train_x)
+    #寻找最优正则化参数值
+    lassocv = LassoCV()
+    lassocv.fit(train_x, train_y)
+    #L1正则化线性模型
+    lasso = Lasso(alpha=lassocv.alpha_)
+    train_x = scaler.transform(train_x)
+    lasso.fit(train_x, train_y)
+    # print test_x1
+    #先预测周二至周六的值
+    test_x1 = scaler.transform(test_x1)
+    test_y1 = lasso.predict(test_x1)
+    # print test_y1
+    #加上周一的值，计算均值和标准差
+    week_count = np.insert(test_y1,0,feature["count"][n_sample - 1])
+    #对预测的一周额外进行滤波修正
+    """这里多加了预测值额外滤波修正"""
+    for i in range(len(week_count)):
+        week_count[i] = (week_count[i]+pays.ix[n_sample-2][1:8][i])/2
+    #对预测的一周额外进行滤波修正结束
+    week_mean = week_count.mean()
+    week_std = week_count.std()
+    #接下来的周一到周7
+    test_x2 = np.zeros((7,feature_size))
+    for i in range(7):
+        last_pay = week_count[i]
+        if i == 0:
+            last_last_pay = x[n_sample - 1][0]
+        else:
+            last_last_pay = test_x1[i - 1][0]
+        if feature_size >= 2:
+            test_x2[i][0] = mean if isInvalid(last_pay) else last_pay #无效暂由均值替代
+            test_x2[i][1] = mean if isInvalid(last_last_pay) else last_last_pay #上上周那天的值
+        if feature_size == 4:
+            test_x2[i][2] = week_mean
+            test_x2[i][3] = week_std
+    test_x2 = scaler.transform(test_x2)
+    test_y2 = lasso.predict(test_x2)
+    # test_y2 = clf.predict(test_x2)
+    week_count2 = test_y2.copy()
+    #对预测的一周额外进行滤波修正
+    """这里多加了预测值额外滤波修正"""
+    last_weekday = np.insert(test_y1,0,feature["count"][n_sample - 1])
+    for i in range(len(week_count2)):
+        week_count2[i] = (week_count2[i]+last_weekday[i])/2
+    #对预测的一周额外进行滤波修正结束
+    week_mean = week_count2.mean()
+    week_std = week_count2.std()
+    #最后预测最后一个周一的值
+    test_x3 = np.zeros((1,feature_size))
+    if feature_size >= 2:
+        test_x3[0][0] = mean if isInvalid(week_count2[0]) else week_count2[0]
+        test_x3[0][1] = mean if isInvalid(test_x2[0][0]) else test_x2[0][0]
+    if feature_size == 4:
+        test_x3[0][2] = week_mean
+        test_x3[0][3] = week_std
+    # test_y3 = clf.predict(test_x3)
+    test_x3 = scaler.transform(test_x3)
+    test_y3 = lasso.predict(test_x3)
+    # last_y = np.insert(test_y1,len(test_y1),test_y2)
+    # last_y = np.insert(last_y,len(last_y),test_y3)
+    """这里用预测修正后的值作为最后结果"""
+    week_count = week_count[1:7]
+    last_y = np.insert(week_count,len(week_count),week_count2)
+    last_y = np.insert(last_y,len(last_y),(test_y3 + test_y2[0])/2)
+    return removeNegetive(toInt(last_y))
+
 
 def predictOneShop(shop_feature_path, feature_size):
     """
