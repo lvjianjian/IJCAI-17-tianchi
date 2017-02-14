@@ -72,16 +72,50 @@ def revise1(x,weekday__mean,weekday__std):
         current = mean
     return current
 
+def revise2(oneshop_pay_info,weekday__mean):
+    """
+     3.对一些没有值的天也用均值代替
+    :param oneshop_pay_info: 一家商店的所有数据
+    :param weekday__mean: 一周中每天的均值(即星期一道星期天的各自均值)
+    :return:
+    """
+    data_index = pd.DatetimeIndex([oneshop_pay_info["time"].values[0], oneshop_pay_info["time"].values[oneshop_pay_info.shape[0]-1]])
+    completeData = Series(oneshop_pay_info["count"].values,index=pd.DatetimeIndex(oneshop_pay_info["time"].values)).resample("D").asfreq()
+    # print completeData
+    nan_values = completeData[pd.isnull(completeData.values)]
+    for date in nan_values.index:
+        weekday = getWeekday(date.strftime("%Y-%m-%d"))
+        completeData[date] = weekday__mean.ix[weekday]
+    return completeData
 
+def reviseAll(data, saveFile, completion = False):
+    newData = pd.DataFrame(columns=data.columns[0:])
 
-
-if __name__ == "__main__":
-    pay_info = pd.read_csv("data/user_pay_afterGrouping.csv")
     for i in range(1,2001,1):
         print i
         pay_part = pay_info[pay_info["shopid"] == i]
         pay_part.insert(3,"weekday",pay_part["time"].map(getWeekday))
-        weekday__mean = pay_part[["count", "weekday"]].groupby("weekday").mean()
-        weekday__std = pay_part[["count", "weekday"]].groupby("weekday").std()
-        pay_info.loc[pay_info["shopid"] == i,"count"] = pay_part.apply(lambda x:revise1(x,weekday__mean,weekday__std),axis=1)
-    pay_info.to_csv("data/user_pay_afterGroupingAndRevision.csv")
+        weekday__groupby = pay_part[["count", "weekday"]].groupby("weekday")
+        weekday__mean = weekday__groupby.mean()
+        weekday__std = weekday__groupby.std()
+        part_apply_revised = pay_part.apply(lambda x: revise1(x, weekday__mean, weekday__std), axis=1)
+        pay_info.loc[pay_info["shopid"] == i,"count"] = part_apply_revised
+        pay_part = pay_info[pay_info["shopid"] == i]
+        if(completion):
+            completeData = revise2(pay_part, weekday__mean)
+            frame = pd.DataFrame({"shopid":i,
+                                  "time":completeData.index,
+                                  "count":completeData.values})
+        else:
+            frame = pd.DataFrame({"shopid":i,
+                                    "time":pay_part["time"].values,
+                                    "count":pay_part["count"].values})
+        frames=[newData,frame]
+        newData = pd.concat(frames,ignore_index=True)
+    if completion:
+        newData["shopid"] = newData["shopid"].astype(int)
+    newData.to_csv(saveFile)
+
+if __name__ == "__main__":
+    pay_info = pd.read_csv("data/user_pay_afterGrouping.csv")
+    reviseAll(pay_info,"data/user_pay_afterGroupingAndRevisionAndCompletion.csv", completion=True)
