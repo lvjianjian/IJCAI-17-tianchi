@@ -6,7 +6,9 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import  Lasso
 from sklearn.linear_model import LassoCV
-
+from FeatureExtractor import *
+from cjx_predict import scoreoneshop
+import datetime
 
 def isInvalid(value):
     """
@@ -419,14 +421,104 @@ def predict_all_in_train(version, feature_size,save_filename = None):
     result = pd.DataFrame(result.astype(np.int))
     result = result.sort_values(by=0).values
     if(save_filename is not None):
-        np.savetxt(save_filename,result,delimiter=",",fmt='%d')
+        np.savetxt(save_filename, result, delimiter=",", fmt='%d')
     return [predict, real, result]
 
 
 
+def predict_all_LR_Split(all_data, save_filename,trainAsTest = False):
+    """
+    线性模型预测所有商店后14天的值
+    :param all_data:
+    :param save_filename:
+    :param trainAsTest: 是否把训练集后14天当作测试集
+    :return:
+    """
+    result = np.zeros((2000, 14))
+    real = np.ndarray(0)
+    for i in range(2000):
+        shopid = i + 1
+        print "shopid:",shopid
+        predict, real_14 = predictOneTrain_LR_Split(shopid, all_data, trainAsTest)
+        if trainAsTest:
+            real = np.append(real, real_14)
+        result[i] = predict
+    if trainAsTest:
+        predict = result.reshape((200*14))
+        print "the final score : ", score(predict, real)
+    result = pd.DataFrame(result.astype(np.int))
+    result.insert(0, "id",value=range(1,2001,1))
+    result = result.values
+    if(save_filename is not None):
+        np.savetxt(save_filename, result, delimiter=",", fmt='%d')
+    else:
+        print result
+    return result
+
+
+def predictOneTrain_LR_Split(shopid, all_data, trainAsTest=False):
+    """
+    一个商店分7天模型
+    :param shopid:
+    :param all_data:
+    :param trainAsTest: 是否把训练集后14天当作测试集
+    :return:如果trainAsTset是True,则返回[predicts,reals]，否则返回[predicts,None]
+    """
+    part_data = all_data[all_data.shopid == shopid]
+    last_14_real_y = None
+    # 取出一部分做训练集
+    if trainAsTest: #使用训练集后14天作为测试集的话，训练集为前面部分
+        part_data = part_data[0:len(part_data) - 14]
+        last_14_real_y = part_data[len(part_data) - 14:]["count"].values
+
+    skipNum = 0
+    sameday = extractBackSameday(part_data, 2, skipNum, nan_method_sameday_mean)
+    count = extractCount(part_data, skipNum)
+    model = []
+    part_counts = []
+    #lr model fit
+    for i in range(7):
+        lr = LinearRegression()
+        model.append(lr)
+        weekday = i + 1
+        part_sameday = getOneWeekdayFomExtractedData(sameday, weekday)
+        part_count = getOneWeekdayFomExtractedData(count, weekday)
+        part_counts.append(part_count)
+        lr.fit(part_sameday, part_count)
+
+    #lr model predict
+    format = "%Y-%m-%d"
+    if trainAsTest:
+        startTime = datetime.datetime.strptime("2016-10-18", format)
+    else:
+        startTime = datetime.datetime.strptime("2016-11-1", format)
+    timedelta = datetime.timedelta(1)
+    preficts = []
+    for i in range(14):
+        currentTime = startTime + timedelta * i
+        strftime = currentTime.strftime(format)
+        index = getWeekday(strftime) - 1
+        part_count = part_counts[index]
+        #取前2周同一天的值为特征进行预测
+        x = [[part_count[len(part_count) - 1][0], part_count[len(part_count) - 2][0]]]
+        predict = model[index].predict(x)
+        preficts.append(predict[0][0])
+        part_counts[index] = np.append(part_count, predict).reshape((part_count.shape[0] + 1, 1))
+    preficts = (removeNegetive(toInt(np.array(preficts)))).astype(int)
+    if trainAsTest:
+        last_14_real_y = (removeNegetive(toInt(np.array(last_14_real_y)))).astype(int)
+        # print preficts,last_14_real_y
+        print str(shopid)+',score:', scoreoneshop(preficts, last_14_real_y)
+    return [preficts, last_14_real_y]
+
 
 if __name__ == "__main__":
-    predict_all(version=3, feature_size=2, save_filename="result/result_meanfilter_extra_resultfilter_f2.csv")
+    import Parameter
+    #读取的是补全的商店信息
+    data = pd.read_csv(Parameter.meanfilteredAfterCompletion)
+    predict_all_LR_Split(data, "result/lr_split_2f.csv", False)
+    # print predictOneTrain_LR_Split(1, data, True)
+    # predict_all(version=3, feature_size=2, save_filename="result/result_meanfilter_extra_resultfilter_f2.csv")
     # print predictOneShop("food_csvfile3/1_trainset.csv",feature_size=2)
     # print predictOneShopInTrain("food_csvfile2/1243_trainset.csv",feature_size=2)[0]
     # prediceAndReal = predict_all_in_train(version=3, feature_size=4)

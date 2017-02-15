@@ -28,7 +28,7 @@ weather_path='data/weather_info.csv'
 pay_path='data/user_pay_afterGrouping.csv'
 extra_view_path='data/extra_user_view_afterGrouping.csv'
 view_path='data/user_view_afterGrouping.csv'
-figure_pay_path='Figure\\';
+figure_pay_path='Figure\\'
 index = pd.DatetimeIndex(['7/1/2015', '31/10/2016'])
 
 

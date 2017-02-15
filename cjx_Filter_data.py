@@ -7,7 +7,7 @@ import  datetime as dt
 '''
 本文件用于给原有的修正数据进行滤波
 '''
-revision_data=pd.read_csv(para.payAfterGroupingAndRevision_path)
+revision_data=pd.read_csv(para.payAfterGroupingAndRevisionAndCompletion_path)
 revision_data=revision_data[['shopid','time','count']]
 def RemoveDatezero(datestr):
     '''
@@ -22,6 +22,7 @@ def RemoveDatezero(datestr):
         words[2]=words[2][1]
     return words[0]+'/'+words[1]+'/'+words[2]
 
+
 def getMeanFilterValue(shop_id,center_date,dataframe):
     '''
     :param shop_id:商店编号
@@ -34,15 +35,12 @@ def getMeanFilterValue(shop_id,center_date,dataframe):
     last_weekdate=center_date-week_delta # 获取上一周的日期
     next_weekdate=center_date+week_delta # 获取下一周的日期
     # 将日期转化为string
-    center_datestr=RemoveDatezero(ddt.strftime(center_date,'%Y/%m/%d'))
-    lastweek_datestr=RemoveDatezero(ddt.strftime(last_weekdate,'%Y/%m/%d'))
-    nextweek_datestr=RemoveDatezero(ddt.strftime(next_weekdate,'%Y/%m/%d'))
-
+    center_datestr=ddt.strftime(center_date,'%Y-%m-%d')
+    lastweek_datestr=ddt.strftime(last_weekdate,'%Y-%m-%d')
+    nextweek_datestr=ddt.strftime(next_weekdate,'%Y-%m-%d')
     center_values=dataframe[(dataframe['time']==center_datestr) & (dataframe['shopid']==shop_id) ]['count'].values
     last_values=dataframe[(dataframe['time']==lastweek_datestr) & (dataframe['shopid']==shop_id) ]['count'].values
     next_values=dataframe[(dataframe['time']==nextweek_datestr) & (dataframe['shopid']==shop_id) ]['count'].values
-
-
     sum_count=0
     numbers=0
     if len(center_values)!=0:
@@ -83,8 +81,7 @@ def MeanFilter(dataframe,file_Path):
 
         for dateStrItem in dateStr_Values:
             # 转化为ddt（datetime.datetime）类型
-            # print dateStrItem
-            dateItem=ddt.strptime(dateStrItem,'%Y/%m/%d')
+            dateItem=ddt.strptime(dateStrItem,'%Y-%m-%d')
             cur_value=getMeanFilterValue(shopIDItem,dateItem,curID_dataframe)
             index_Value=curID_dataframe[curID_dataframe['time']==dateStrItem].index.values[0]
             copy_dataframe.at[index_Value,'count']=cur_value
@@ -97,5 +94,5 @@ def MeanFilter(dataframe,file_Path):
 
 
 if __name__=='__main__':
-     MeanFilter(revision_data,'processing_files\\meanfiltered.csv')
+     MeanFilter(revision_data,'processing_files/meanfilteredAfterCompletion.csv')
 

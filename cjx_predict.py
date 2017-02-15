@@ -13,10 +13,10 @@ import pandas as pd
 import Parameter as para
 import  threading
 cur_thread_num=20;
-# 序列长度设为7
+# 序列长度设为14
 seq_length = 14
-dateparser1=para.dateparse1
-meanfiltered_data=pd.read_csv('processing_files/meanfiltered.csv')
+# dateparser1=para.dateparse1
+# meanfiltered_data=pd.read_csv('processing_files/meanfiltered.csv')
 
 def toInt(x):
     """
@@ -39,8 +39,7 @@ def getCoutList(traindata,shopId):
 
 def preprocessCoutList(seq_length,counList):
     '''
-
-    :param seq_length: 时间轴辐射长度
+    :param seq_length: 时间轴辐射长度payAfterGroupingAndRevision_path
     :param counList:
     :return:
     '''
@@ -87,7 +86,7 @@ def predictInTrainOneShop_LSTM(train_data,seq_length,id_item):
 
     return [prediction_v,test_y,id_item]
 
-def predict_All_inTrain(train_data,seq_length,save_filename):
+def  predict_All_inTrain(train_data,seq_length,save_filename):
 
     result = np.zeros((2000, 15))
     i = 0
@@ -126,7 +125,7 @@ def scoreoneshop(predict,real):
     # print "real:", real
     score = 0
     for i in range(14):
-        score += (abs(predict[i]-real[i])/(predict[i]+real[i]))
+        score += (abs(predict[i]-real[i])/(float)(predict[i]+real[i]))
     score /= 14
     return score
 
@@ -141,7 +140,7 @@ def score(predict,real):
     # print "real:", real
     score = 0
     for i in range(predict.shape[0]):
-        score += (abs(predict[i]-real[i])/(predict[i]+real[i]))
+        score += (abs(predict[i]-real[i])/(float)(predict[i]+real[i]))
     score /= predict.shape[0]
     return score
 
@@ -149,5 +148,5 @@ def score(predict,real):
 if __name__=='__main__':
     '''
     '''
-    prediceAndReal=predict_All_inTrain(meanfiltered_data,seq_length,'result\\result_train_lstm.csv')
-    print score(prediceAndReal[0], prediceAndReal[1])
+    # prediceAndReal=predict_All_inTrain(meanfiltered_data,seq_length,'result\\result_train_lstm.csv')
+    # print score(prediceAndReal[0], prediceAndReal[1])

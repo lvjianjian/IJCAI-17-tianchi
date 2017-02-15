@@ -118,12 +118,12 @@ for i,shop_id in enumerate(shop_id_Series):
     # if shop_id<1636:
     #     continue
     if cate1=='美食':
-        father_path='food_csvfile_holiday1\\'
+        father_path='food_csvfile_holiday2/'
     else:
         if cate1=='超市便利店':
-           father_path = 'supermarket_csvfile_holiday1\\'
+           father_path = 'supermarket_csvfile_holiday2/'
         else:
-            father_path = 'other_csvfile_holiday1\\'
+            father_path = 'other_csvfile_holiday2/'
 
     pay_time_list=user_pay_info[user_pay_info['shopid']==shop_id]['time'].tolist()
     pay_count_list=user_pay_info[user_pay_info['shopid']==shop_id]['count'].tolist()
@@ -468,7 +468,8 @@ for i,shop_id in enumerate(shop_id_Series):
     del IsHoliday_same_day
     del IsHoliday
     del labellist
+
     cur_path=father_path+str(shop_id)+'_trainset.csv'
     cur_df=pd.DataFrame(trainSet)
-    cur_df.to_csv(cur_path,index=True)
+    cur_df.to_csv(cur_path, index=True)
 
