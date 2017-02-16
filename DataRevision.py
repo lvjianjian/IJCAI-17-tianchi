@@ -7,13 +7,14 @@
 import pandas as pd
 from pandas import DataFrame,Series
 from datetime import datetime
+import Parameter
 
-
-holidayInfo = pd.read_csv("data/holiday.csv", names=["time","holiday"])
+holidayInfo = pd.read_csv(Parameter.holidayPath, names=["time","holiday"])
 holiday = holidayInfo["holiday"]
 #转化为以日期为索引的Series
 holidayInfo = Series(index=holidayInfo["time"])
 holidayInfo[:] = holiday
+
 
 def getWeekday(dateString):
     """

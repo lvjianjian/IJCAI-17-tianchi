@@ -1,9 +1,8 @@
 # encoding=utf-8
 
 
-from cjx_predict import preprocessCoutList
 import numpy as np
-from DataRevision import  getWeekday
+from DataRevision import getWeekday
 import pandas as pd
 
 nan_method_global_mean = "global_mean" #全局平均
@@ -37,18 +36,15 @@ def extractCount(part_data,skipNum = 0):
     return dataY
 
 
-
-
-
-def extractBackSameday(part_data, backNum = 1, startNum = 0, nan_method=nan_method_global_mean):
+def extractBackDayByNCycle(part_data, backNum = 1, startNum = 0, nan_method=nan_method_global_mean,cycle = 1):
     """
-    从{startNum}开始抽取前{backNum}周的sameday, 排列按照前一周的sameday，前第二周的sameday这样由近就及远排放
+    从{startNum}开始抽取前{backNum}的以{cycle}为周期的day的值, 排列按照前面第{cycle}天，前面第{2*cycle}天这样由近就及远排放
     :param part_data:需要含有两列组成，一列为count,另一列为time,注意这里的数据是要按日期补全的数据，不然会有不对应的情况
-    :param backNum: 向前抽取多少周的sameday
+    :param backNum: 向前抽取多少天
     :param startNum: 前面跳过的样例数，也就是从第{startNum}开始生成
-    :param nan_method: 缺失值处理
-    :return: ndarray,shape(处理的样例出数,backNum + 1),第一列到第{backNum}列为前第一周的sameday的值到前第{backNum}周的sameday的值
-            第{backNum}+1列为哪个样例的日期
+    :param nan_method: 缺失值处理方式
+    :return: ndarray,shape(处理的样例出数,backNum + 1),第一列到第{backNum}列为前第{cycle}天的值到前第{backNum * cycle}天的值
+            第{backNum}+1列为那个样例的日期
     """
     #check parameter
     if(not (nan_method == nan_method_global_mean or nan_method == nan_method_sameday_mean)):
@@ -80,7 +76,7 @@ def extractBackSameday(part_data, backNum = 1, startNum = 0, nan_method=nan_meth
     dataX=[]
     for i in range(startNum, part_data.shape[0], 1):
         for j in range(backNum):
-            index = i - 7 * (j + 1)
+            index = i - cycle * (j + 1)
             if index < 0:
                 value = getReplaceValue(replace, nan_method, weekday[i])
             else:
@@ -89,6 +85,35 @@ def extractBackSameday(part_data, backNum = 1, startNum = 0, nan_method=nan_meth
         dataX.append(time[i])
     dataX = np.reshape(dataX, (part_data.shape[0] - startNum, backNum + 1))
     return dataX
+
+
+
+def extractBackDay(part_data, backNum = 1, startNum = 0, nan_method=nan_method_global_mean):
+    """
+    从{startNum}开始抽取前{backNum}的day的值, 排列按照前面第一天，前面第二天这样由近就及远排放
+    :param part_data:需要含有两列组成，一列为count,另一列为time,注意这里的数据是要按日期补全的数据，不然会有不对应的情况
+    :param backNum: 向前抽取多少天
+    :param startNum: 前面跳过的样例数，也就是从第{startNum}开始生成
+    :param nan_method: 缺失值处理方式
+    :return: ndarray,shape(处理的样例出数,backNum + 1),第一列到第{backNum}列为前第一天的值到前第{backNum}天的值
+            第{backNum}+1列为哪个样例的日期
+    """
+    return extractBackDayByNCycle(part_data,backNum,startNum,nan_method,1)
+
+
+
+def extractBackSameday(part_data, backNum = 1, startNum = 0, nan_method=nan_method_global_mean):
+    """
+    从{startNum}开始抽取前{backNum}周的sameday, 排列按照前一周的sameday，前第二周的sameday这样由近就及远排放
+    :param part_data:需要含有两列组成，一列为count,另一列为time,注意这里的数据是要按日期补全的数据，不然会有不对应的情况
+    :param backNum: 向前抽取多少周的sameday
+    :param startNum: 前面跳过的样例数，也就是从第{startNum}开始生成
+    :param nan_method: 缺失值处理
+    :return: ndarray,shape(处理的样例出数,backNum + 1),第一列到第{backNum}列为前第一周的sameday的值到前第{backNum}周的sameday的值
+            第{backNum}+1列为哪个样例的日期
+    """
+    return extractBackDayByNCycle(part_data,backNum,startNum,nan_method,7)
+
 
 def getOneWeekdayFomExtractedData(extractData, weekday = 0):
     """
@@ -115,7 +140,8 @@ if __name__ == "__main__":
 
     data = pd.read_csv(Parameter.meanfilteredAfterCompletion)
     part_data = data[data.shopid == 1]
+    print part_data
 
-
-    sameday = extractBackSameday(part_data, 3, 14, nan_method_sameday_mean)
+    sameday = extractBackDay(part_data, 3, 0, nan_method_sameday_mean)
+    print sameday
     print getOneWeekdayFomExtractedData(sameday, 5).shape
