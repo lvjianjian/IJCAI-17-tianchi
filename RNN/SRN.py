@@ -104,8 +104,8 @@ def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
         train_y = np.append(train_y,predict).reshape((train_y.shape[0] + 1,1))
         # preficts.append(predict)
         # part_counts[index] = np.append(part_count, predict).reshape((part_count.shape[0] + 1, 1))
-    # preficts = (removeNegetive(toInt(np.array(preficts)))).astype(int)
-    preficts = np.array(preficts)
+    preficts = (removeNegetive(toInt(np.array(preficts)))).astype(int)
+    # preficts = np.array(preficts)
     if trainAsTest:
         last_14_real_y = (removeNegetive(toInt(np.array(last_14_real_y)))).astype(int)
         # print preficts,last_14_real_y
@@ -139,12 +139,13 @@ def predict_all_LSTM(all_data, save_filename,trainAsTest = False,region=None):
         if trainAsTest:
             real = np.append(real, real_14)
         result[i-startid] = predict
-        # gc.collect()
+        gc.collect()
     if trainAsTest:
-        predict = result.reshape((size*14))
+        predict = result.reshape((size * 14))
         print "the final score : ", score(predict, real)
     result = pd.DataFrame(result.astype(np.int))
     result.insert(0, "id", value=range(startid, endid + 1, 1))
+    print result
     result = result.values
     if(save_filename is not None):
         np.savetxt(save_filename, result, delimiter=",", fmt='%d')
@@ -200,9 +201,12 @@ def predict_all_LSTM_multithreads(all_data, save_filename, threadNum):
     return result
 
 if __name__ == "__main__":
-    pay_info = pd.read_csv(Parameter.meanfilteredAfterCompletion)
+    from sys import argv
+    startid = int(argv[1])
+    endid = int(argv[2])
+    pay_info = pd.read_csv(Parameter.payAfterGroupingAndRevisionAndCompletion_path)
     # print predictOneShop_LSTM(686, pay_info, True)
-    predict_all_LSTM(pay_info, Parameter.projectPath + 'result/lstm_14f2.csv', False, [201, 400])
+    predict_all_LSTM(pay_info, Parameter.projectPath + 'result/lstm_14f%d.csv' % startid, False, [startid, endid])
     # predict_all_LSTM_multithreads(pay_info, Parameter.projectPath + "result/lstm_14f", 20)
 
 
