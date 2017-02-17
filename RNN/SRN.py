@@ -200,7 +200,7 @@ def predict_all_LSTM_multithreads(all_data, save_filename, threadNum):
     return result
 
 if __name__ == "__main__":
-    pay_info = pd.read_csv(Parameter.payAfterGroupingAndRevisionAndCompletion_path)
+    pay_info = pd.read_csv(Parameter.meanfilteredAfterCompletion)
     # print predictOneShop_LSTM(686, pay_info, True)
     predict_all_LSTM(pay_info, Parameter.projectPath + 'result/lstm_14f2.csv', False, [201, 400])
     # predict_all_LSTM_multithreads(pay_info, Parameter.projectPath + "result/lstm_14f", 20)
