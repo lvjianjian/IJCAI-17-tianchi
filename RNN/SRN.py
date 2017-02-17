@@ -22,10 +22,11 @@ import datetime
 from cjx_predict import scoreoneshop,score
 import threading
 import Queue
-rnn_nb_epoch = 8
+import gc
+from sys import getrefcount
+
 def my_loss(y_true,y_predict):
-    print y_true,y_predict
-    return K.mean(abs((y_predict-y_true)/(y_predict+y_true)),axis = -1)
+    return K.mean(abs((y_predict-y_true)/(y_predict+y_true)), axis = -1)
 
 def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
     """
@@ -40,9 +41,11 @@ def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
     if trainAsTest: #使用训练集后14天作为测试集的话，训练集为前面部分
         part_data = part_data[0:len(part_data) - 14]
         last_14_real_y = part_data[len(part_data) - 14:]["count"].values
-
+    verbose = 2
+    rnn_nb_epoch = 5
     skipNum = 0
     backNum = 14
+    learnrate = 0.01
     sameday = extractBackDay(part_data, backNum, skipNum, nan_method_sameday_mean)
     count = extractCount(part_data, skipNum)
     train_x = getOneWeekdayFomExtractedData(sameday)
@@ -56,16 +59,19 @@ def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
     train_x = train_x.reshape((train_x.shape[0],
                                train_x.shape[1],1))
     model = Sequential()
+    # print getrefcount(model)
     model.add(LSTM(32, input_shape=(train_x.shape[1], train_x.shape[2]), activation="tanh")) #sigmoid
+    # print getrefcount(model)
     model.add(Dense(1, activation='linear'))
     #, W_regularizer=l2(0.01), activity_regularizer=activity_l2(0.01)
-
+    # print getrefcount(model)
     # 设置优化器（除了学习率外建议保持其他参数不变）
-    rms=RMSprop(lr=0.02)
+    rms=RMSprop(lr=learnrate)
     # sgd=SGD(lr=0.1, momentum=0.9, nesterov=True)
     model.compile(loss="mse", optimizer=rms)
+    # print getrefcount(model)
     # print model.summary()
-    model.fit(train_x, train_y, nb_epoch=rnn_nb_epoch, batch_size=1, verbose=2)
+    model.fit(train_x, train_y, nb_epoch=rnn_nb_epoch, batch_size=1, verbose=verbose)
     # print model.get_weights()
     # part_counts = []
     # for i in range(7):
@@ -73,7 +79,7 @@ def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
     #     part_count = getOneWeekdayFomExtractedData(count, weekday)
     #     part_counts.append(part_count)
 
-
+    # print getrefcount(model)
     format = "%Y-%m-%d"
     if trainAsTest:
         startTime = datetime.datetime.strptime("2016-10-18", format)
@@ -107,28 +113,38 @@ def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
     return [preficts, last_14_real_y]
 
 
-def predict_all_LSTM(all_data, save_filename,trainAsTest = False):
+def predict_all_LSTM(all_data, save_filename,trainAsTest = False,region=None):
     """
     线性模型预测所有商店后14天的值
     :param all_data:
     :param save_filename:
     :param trainAsTest: 是否把训练集后14天当作测试集
+    :param region: shopid区域，list,[startid,endid]
     :return:
     """
-    result = np.zeros((2000, 14))
+    if region is None:
+        startid = 1
+        endid = 2000
+    else:
+        startid = region[0]
+        endid = region[1]
+    size = endid - startid + 1
+    result = np.zeros((size, 14))
     real = np.ndarray(0)
-    for i in range(2000):
-        shopid = i + 1
-        print "shopid:",shopid
+    for i in range(startid, endid + 1, 1):
+        shopid = i
+        print "shopid:", shopid
         predict, real_14 = predictOneShop_LSTM(shopid, all_data, trainAsTest)
+        # predict = real_14 = np.arange(14)
         if trainAsTest:
             real = np.append(real, real_14)
-        result[i] = predict
+        result[i-startid] = predict
+        # gc.collect()
     if trainAsTest:
-        predict = result.reshape((200*14))
+        predict = result.reshape((size*14))
         print "the final score : ", score(predict, real)
     result = pd.DataFrame(result.astype(np.int))
-    result.insert(0, "id", value=range(1,2001,1))
+    result.insert(0, "id", value=range(startid, endid + 1, 1))
     result = result.values
     if(save_filename is not None):
         np.savetxt(save_filename, result, delimiter=",", fmt='%d')
@@ -184,9 +200,9 @@ def predict_all_LSTM_multithreads(all_data, save_filename, threadNum):
     return result
 
 if __name__ == "__main__":
-    pay_info = pd.read_csv(Parameter.meanfilteredAfterCompletion)
-    # print predictOneShop_LSTM(2, pay_info, True)
-    # predict_all_LSTM(pay_info,"result/lstm_14f",False)
-    predict_all_LSTM_multithreads(pay_info, "", 20)
+    pay_info = pd.read_csv(Parameter.payAfterGroupingAndRevisionAndCompletion_path)
+    # print predictOneShop_LSTM(686, pay_info, True)
+    predict_all_LSTM(pay_info, Parameter.projectPath + 'result/lstm_14f2.csv', False, [201, 400])
+    # predict_all_LSTM_multithreads(pay_info, Parameter.projectPath + "result/lstm_14f", 20)
 
 
