@@ -90,6 +90,52 @@ def getpredictDataSeries(predict_data,shopid):
      # fullSeries=pd.Series (fullValue, index=full_index)
      return predictSeries
 
+def Figure_oneShop(shopid,shop_data,real_data,pre_data,socore_info=np.zeros(2000),figsavepath=None):
+    startDate = datetime.datetime (2015, 6, 1)
+    endDate = datetime.datetime (2017, 1, 1)
+    delta = datetime.timedelta (days=20)
+    dates = drange (startDate, endDate, delta)
+    shop_id_series = real_data['shopid'].unique ();
+    fig = plt.figure (figsize=(15, 8))
+    plt.xlabel ('date')
+    plt.ylabel ('counts')
+    view_ax = fig.add_subplot (1, 1, 1)
+    view_ax.set_xticklabels (dates, rotation=45, size=5)
+    view_ax.xaxis.set_major_formatter (DateFormatter ('%Y-%m-%d'))
+    ############################################################################################################
+    shopid = int (shopid)
+    child_path = 'normal_figurel_nonmeanfilter_nearmean_2/'
+    _cur_shop_info = shop_data[shop_data.shopid == shopid]
+    if socore_info is None:
+        plt.title (
+            '\nshopID:' + str (_cur_shop_info.shopid.values[0]) + ' city:' + str (
+                _cur_shop_info.city_name.values[0]) + \
+            ' perpay:' + str (_cur_shop_info.per_pay.values[0]) + '\nscore:' + str (
+                _cur_shop_info.score.values[0]) + ' conmment:' \
+            + str (_cur_shop_info.comment_cnt.values[0]) + 'cate1_name:' + str (
+                _cur_shop_info.cate1_name.values[0]) + '\ncate2_name:' \
+            + str (_cur_shop_info.cate2_name.values[0]) + 'cate3_name:' + str (_cur_shop_info.cate3_name.values[0]))
+    else:
+        plt.title (
+            '\nshopID:' + str (_cur_shop_info.shopid.values[0]) + ' city:' + str (
+                _cur_shop_info.city_name.values[0]) + \
+            ' perpay:' + str (_cur_shop_info.per_pay.values[0]) + '\nscore:' + str (
+                _cur_shop_info.score.values[0]) + ' conmment:' \
+            + str (_cur_shop_info.comment_cnt.values[0]) + 'cate1_name:' + str (
+                _cur_shop_info.cate1_name.values[0]) + '\ncate2_name:' \
+            + str (_cur_shop_info.cate2_name.values[0]) + 'cate3_name:' + str (
+                _cur_shop_info.cate3_name.values[0]) +
+            '\n testscore:' + str (socore_info[shopid - 1]))
+    PreValuesSeries = getpredictDataSeries (pre_data, shopid)
+    RealValuesSeries = getRealValuesSeries (real_data, shopid)
+    # print type(RealValuesSeries)
+    figure_name = figsavepath + child_path + str (shopid) + '_trend_.png'
+    view_ax.plot_date (RealValuesSeries.index, RealValuesSeries.values, 'm-', marker='.', linewidth=0.5)
+    view_ax.plot_date (PreValuesSeries.index, PreValuesSeries.values, 'c-', marker='.', linewidth=0.5)
+    print figure_name
+    plt.savefig (figsavepath)
+    view_ax.clear ()
+
 def Figure_all(shop_data,real_data,pre_data,socore_info=np.zeros(2000),figsavepath=None):
     startDate = datetime.datetime (2015, 6, 1)
     endDate = datetime.datetime (2017, 1, 1)
@@ -135,8 +181,6 @@ def Figure_all(shop_data,real_data,pre_data,socore_info=np.zeros(2000),figsavepa
         plt.savefig (figure_name)
         view_ax.clear()
 
-
-
 if __name__=='__main__':
     shop_path = 'data/shop_info.txt'
     real_data = pd.read_csv ('data/user_pay_afterGrouping.csv')
@@ -148,5 +192,6 @@ if __name__=='__main__':
 
     # pd.Series().append()
     # print score_info
-    Figure_all(shop_data,real_data,predict_data,score_info,'predictedtrendFigs/')
+    # Figure_all(shop_data,real_data,predict_data,score_info,'predictedtrendFigs/')
+    Figure_oneShop(23,shop_data,real_data,predict_data,score_info,'predictedtrendFigs/23_predict.png')
     # print JointpredictData(predict_data,real_data,1)
