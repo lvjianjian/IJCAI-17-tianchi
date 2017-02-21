@@ -18,7 +18,8 @@ holidayInfo[:] = holiday
 outlier_remove = "outlier_remove"
 outlier_sameday_replace="outlier_sameday_replace"
 outlier_day_replace="outlier_day_replace"
-
+succession_completion = "succession_completion"
+succession_turncate = "succession_turncate"
 
 def getWeekday(dateString):
     """
@@ -218,7 +219,22 @@ def reviseOneShop(part,windowRadious,method,replace_day_window,replace_sameday_w
     return [count,time]
 
 
-def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_replace, replace_day_window=7, replace_sameday_window=2, multi = 3, checkHoliday=True):
+def turancate(part_data):
+    count = []
+    time = []
+    part_data.insert(3,"weekday",part_data["time"].map(getWeekday))
+    weekday = part_data["weekday"].values
+    oldtime = part_data["time"].values
+    oldcount=part_data["count"].values
+    start = weekday[0]
+    for i in range(len(weekday)):
+        if (weekday[i] == start):
+            count.append(oldcount[i])
+            time.append(oldtime[i])
+            start = start % 7 + 1
+    return [count, time]
+
+def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_replace, replace_day_window=7, replace_sameday_window=2, multi = 3, checkHoliday=True,succession = None):
     """
     :param data:
     :param saveFilePath:
@@ -228,6 +244,7 @@ def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_repla
     :param replace_sameday_window: 对于outlier_sameday_replace方式时，这个参数指定前后获取sameday的个数，默认为1
     :param multi:=3,大于{multi}倍方差时检测异常
     :param checkHoliday: 检查节假日
+    :param succession:day连续化，None为不连续化，succession_turncate为截断法连续化，completion为补全法连续化
     :return:
     """
     if data.columns[0] != "shopid":
@@ -247,10 +264,29 @@ def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_repla
         # pay_part.insert(3, "weekday", pay_part["time"].map(getWeekday))
         count, time = reviseOneShop(pay_part,windowRadious,method,replace_day_window,replace_sameday_window,multi,checkHoliday)
         frame = pd.DataFrame({"shopid": j, "time": time, "count": count})
+
+
+        if(succession is None):
+           pass
+        elif(succession == succession_completion):
+            frame.insert(3,"weekday",frame["time"].map(getWeekday))
+            weekday__groupby = frame[["count", "weekday"]].groupby("weekday")
+            weekday__mean = weekday__groupby.mean()
+            completeData = revise2(frame, weekday__mean)
+            frame = pd.DataFrame({"shopid":j,
+                              "time":completeData.index,
+                              "count":completeData.values})
+        elif(succession == succession_turncate):
+            count, time = turancate(frame)
+            frame = pd.DataFrame({"shopid": j, "time": time, "count": count})
+        else:
+            raise Exception("parameter succession error")
+            return
         newData = pd.concat([newData, frame], ignore_index=True)
+
     newData['shopid'] = newData['shopid'].apply(int)
     newData.to_csv(saveFilePath)
 
 if __name__ == "__main__":
     data = pd.read_csv("data/user_pay_afterGrouping.csv")
-    reviseAll2(data, "data/user_pay_afterGroupingAndRevision2.csv")
+    reviseAll2(data, "data/user_pay_afterGroupingAndRevision2AndTurncate.csv", succession=succession_turncate)
