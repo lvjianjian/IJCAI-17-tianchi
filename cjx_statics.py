@@ -115,6 +115,8 @@ def countByDateAndCate2(groupingData,holiday_data,shop_data,picturepath):
         fig = plt.figure(figsize=(15, 8))
         plt.xlabel('date')
         plt.ylabel('count')
+        if type(cate)==float:
+            cate='nan'
         plt.title('leve2_cate:'+cate+'\n商家数:'+str(shop_Num))
         plt.grid(True)
         view_ax = fig.add_subplot(1, 1, 1)
@@ -170,6 +172,8 @@ def countByDateAndCate1(groupingData,holiday_data,shop_data,picturepath):
         fig = plt.figure(figsize=(15, 8))
         plt.xlabel('date')
         plt.ylabel('count')
+        if type(cate)==float:
+            cate='nan'
         plt.title('level1_cate:'+cate+'\n商家数:'+str(shop_Num))
         plt.grid(True)
         view_ax = fig.add_subplot(1, 1, 1)
@@ -225,6 +229,8 @@ def countByDateAndCate3(groupingData,holiday_data,shop_data,picturepath):
         fig = plt.figure(figsize=(15, 8))
         plt.xlabel('date')
         plt.ylabel('count')
+        if type(cate)==float:
+            cate='nan'
         plt.title('level3_cate:'+cate+'\n商家数:'+str(shop_Num))
         plt.grid(True)
         view_ax = fig.add_subplot(1, 1, 1)
