@@ -8,8 +8,13 @@ import pandas as pd
 nan_method_global_mean = "global_mean" #全局平均
 nan_method_sameday_mean = "sameday_mean"#sameday平均
 
+statistic_functon_mean = "statistic_functon_mean"
+statistic_functon_median = "statistic_functon_median" #中位数
+statistic_functon_max = "statistic_functon_max"
+statistic_functon_min = "statistic_functon_min"
+statistic_functon_std = "statistic_functon_std"
 
-def getReplaceValue(replace,method,weekday):
+def getReplaceValue(replace, method, weekday):
     if method == nan_method_global_mean:
         return replace[0]
     elif method == nan_method_sameday_mean:
@@ -29,11 +34,26 @@ def extractCount(part_data,skipNum = 0):
     dataY = []
     count = part_data["count"].values
     time = part_data["time"].values
-    for i in range(skipNum,part_data.shape[0],1):
+    for i in range(skipNum, part_data.shape[0], 1):
         dataY.append(count[i])
         dataY.append(time[i])
-    dataY = np.reshape(dataY,(part_data.shape[0] - skipNum,2))
+    dataY = np.reshape(dataY, (part_data.shape[0] - skipNum, 2))
     return dataY
+
+def extractWeekday(part_data, startNum = 0):
+    """
+    从{startNum}开始抽取前{backNum}的day的值, 排列按照前面第一天，前面第二天这样由近就及远排放
+    :param part_data:需要含有两列组成，一列为count,另一列为time,注意这里的数据是要按日期补全的数据，不然会有不对应的情况
+    :param startNum: 前面跳过的样例数，也就是从第{startNum}开始生成
+    :return: ndarray,第一列为weekday
+            第2列为哪个样例的日期
+    """
+
+    #先加入weekday一列，方便后面处理
+    if "weekday" not in part_data.columns:
+        part_data.insert(3, "weekday", part_data["time"].map(getWeekday))
+    return part_data[startNum:][["weekday","time"]].values
+
 
 
 def extractBackDayByNCycle(part_data, backNum = 1, startNum = 0, nan_method=nan_method_global_mean,cycle = 1):
@@ -59,7 +79,8 @@ def extractBackDayByNCycle(part_data, backNum = 1, startNum = 0, nan_method=nan_
 
 
     #先加入weekday一列，方便后面处理
-    part_data.insert(3, "weekday", part_data["time"].map(getWeekday))
+    if "weekday" not in part_data.columns:
+        part_data.insert(3, "weekday", part_data["time"].map(getWeekday))
 
 
     #计算缺失值的代替值
@@ -85,7 +106,6 @@ def extractBackDayByNCycle(part_data, backNum = 1, startNum = 0, nan_method=nan_
         dataX.append(time[i])
     dataX = np.reshape(dataX, (part_data.shape[0] - startNum, backNum + 1))
     return dataX
-
 
 
 def extractBackDay(part_data, backNum = 1, startNum = 0, nan_method=nan_method_global_mean):
@@ -114,6 +134,76 @@ def extractBackSameday(part_data, backNum = 1, startNum = 0, nan_method=nan_meth
     """
     return extractBackDayByNCycle(part_data,backNum,startNum,nan_method,7)
 
+def extractBackWeekValue(part_data, backNum = 1, startNum = 0, nan_method=nan_method_global_mean,statistic_functon = None):
+    """
+    从{startNum}开始抽取前{backNum}周的sameday, 排列按照前一周的sameday，前第二周的sameday这样由近就及远排放
+    :param part_data:需要含有两列组成，一列为count,另一列为time,注意这里的数据是要按日期补全的数据，不然会有不对应的情况
+    :param backNum: 向前抽取多少周的周统计值
+    :param startNum: 前面跳过的样例数，也就是从第{startNum}开始生成
+    :param nan_method: 缺失值处理
+    :param statistic_functon: 一周值的统计函数
+    :return: ndarray,shape(处理的样例出数,backNum + 1),第一列到第{backNum}列为前第一周的周统计值到前第{backNum}周的周统计值
+            第{backNum}+1列为哪个样例的日期
+    """
+    #check parameter
+    if(not (nan_method == nan_method_global_mean or nan_method == nan_method_sameday_mean)):
+        raise Exception("parameter nan_method error")
+        return
+    if(startNum <0 or startNum > part_data.shape[0]):
+        raise Exception("parameter skipNum error")
+        return
+    if(backNum<1):
+        raise Exception("parameter backNum error")
+        return
+    if(statistic_functon is None):
+        raise Exception("statistic_functon is None")
+        return
+
+    #先加入weekday一列，方便后面处理
+    if "weekday" not in part_data.columns:
+        part_data.insert(3, "weekday", part_data["time"].map(getWeekday))
+
+
+    #计算缺失值的代替值
+    replace=[]
+    if(nan_method == nan_method_global_mean):
+        replace.append(part_data["count"].mean())
+    elif(nan_method == nan_method_sameday_mean):
+        for i in range(7):
+            replace.append(part_data[part_data.weekday==(i+1)]["count"].mean())
+
+    count = part_data["count"].values
+    weekday = part_data["weekday"].values
+    time = part_data["time"].values
+
+    dataX=[]
+    for i in range(startNum, part_data.shape[0], 1):
+        for j in range(backNum):
+            current_wd = weekday[i]
+            weekday_values=[]
+            #拿出前一周的值
+            for k in range(1, 8, 1):
+                index = (i - 7 * (j + 1)) + (k - current_wd)
+                if index < 0:
+                    value = getReplaceValue(replace, nan_method, weekday[i])
+                else:
+                    value = count[index]
+                weekday_values.append(value)
+
+            if statistic_functon == statistic_functon_mean:
+                value = np.mean(weekday_values)
+            elif statistic_functon == statistic_functon_median:
+                value = np.median(weekday_values)
+            elif statistic_functon == statistic_functon_max:
+                value = np.max(weekday_values)
+            elif statistic_functon == statistic_functon_min:
+                value = np.min(weekday_values)
+            elif statistic_functon == statistic_functon_std:
+                value = np.std(weekday_values)
+            dataX.append(value)
+        dataX.append(time[i])
+    dataX = np.reshape(dataX, (part_data.shape[0] - startNum, backNum + 1))
+    return dataX
 
 def getOneWeekdayFomExtractedData(extractData, weekday = 0):
     """
@@ -140,8 +230,13 @@ if __name__ == "__main__":
 
     data = pd.read_csv(Parameter.meanfilteredAfterCompletion)
     part_data = data[data.shopid == 1]
-    print part_data
+    # print part_data
+    #
+    # sameday = extractBackWeekValue(part_data, 3, 0, nan_method_sameday_mean, statistic_functon_mean)
+    # print sameday
+    # print getOneWeekdayFomExtractedData(sameday, 5).shape
 
-    sameday = extractBackDay(part_data, 3, 0, nan_method_sameday_mean)
-    print sameday
-    print getOneWeekdayFomExtractedData(sameday, 5).shape
+    weekdays = extractWeekday(part_data,100)
+    print weekdays
+    print getOneWeekdayFomExtractedData(weekdays)
+

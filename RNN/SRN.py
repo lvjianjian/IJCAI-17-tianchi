@@ -14,12 +14,11 @@ from keras.regularizers import l2, activity_l2
 from keras import backend as K
 from keras.layers import LSTM
 from lv import toInt
-from cjx_predict import scoreoneshop
 from lv import removeNegetive
 from sklearn.preprocessing import MinMaxScaler
 from FeatureExtractor import *
 import datetime
-from cjx_predict import scoreoneshop,score
+from cjx_predict import scoreoneshop, score
 import threading
 import Queue
 import gc
@@ -39,8 +38,9 @@ def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
     last_14_real_y = None
     # 取出一部分做训练集
     if trainAsTest: #使用训练集后14天作为测试集的话，训练集为前面部分
-        part_data = part_data[0:len(part_data) - 14]
         last_14_real_y = part_data[len(part_data) - 14:]["count"].values
+        part_data = part_data[0:len(part_data) - 14]
+    # print last_14_real_y
     verbose = 2
     rnn_nb_epoch = 5
     skipNum = 0
@@ -57,7 +57,7 @@ def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
     train_y = y_scaler.transform(train_y)
     '''标准化结束'''
     train_x = train_x.reshape((train_x.shape[0],
-                               train_x.shape[1],1))
+                               train_x.shape[1], 1))
     model = Sequential()
     # print getrefcount(model)
     model.add(LSTM(32, input_shape=(train_x.shape[1], train_x.shape[2]), activation="tanh")) #sigmoid
@@ -66,9 +66,10 @@ def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
     #, W_regularizer=l2(0.01), activity_regularizer=activity_l2(0.01)
     # print getrefcount(model)
     # 设置优化器（除了学习率外建议保持其他参数不变）
-    rms=RMSprop(lr=learnrate)
+    rms = RMSprop(lr=learnrate)
     # sgd=SGD(lr=0.1, momentum=0.9, nesterov=True)
     model.compile(loss="mse", optimizer=rms)
+    print model.summary()
     # print getrefcount(model)
     # print model.summary()
     model.fit(train_x, train_y, nb_epoch=rnn_nb_epoch, batch_size=1, verbose=verbose)
@@ -113,7 +114,123 @@ def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):
     return [preficts, last_14_real_y]
 
 
-def predict_all_LSTM(all_data, save_filename,trainAsTest = False,region=None):
+def predict_all(all_data, save_filename, trainAsTest=False, region=None, predict_function = None):
+    """
+    预测所有商店后14天的值
+    :param all_data:
+    :param save_filename: trainAsTest为true,则存储predict+real的值,前面14列为predict,后面14列为real,否则只有前面14列
+    :param trainAsTest: 是否把训练集后14天当作测试集
+    :param region: shopid区域，list,[startid,endid]
+    :param predict_function: 预测单一商店的函数
+    :return:
+    """
+    if predict_function is None:
+        raise Exception("predict_function is none")
+        return
+    if region is None:
+        startid = 1
+        endid = 2000
+    else:
+        startid = region[0]
+        endid = region[1]
+    size = endid - startid + 1
+    if not trainAsTest:
+        result = np.zeros((size, 14))
+    else:
+        result = np.zeros((size, 28))
+    real = np.ndarray(0)
+    for i in range(startid, endid + 1, 1):
+        shopid = i
+        print "shopid:", shopid
+        predict, real_14 = predict_function(shopid, all_data, trainAsTest)
+        # scoreoneshop1 = scoreoneshop(predict, real_14)
+        # predict = real_14 = np.arange(14)
+        if trainAsTest:
+            real = np.append(real, real_14)
+            predict = np.append(predict,real_14)
+        result[i-startid] = predict
+        gc.collect()
+
+
+    result = pd.DataFrame(result.astype(np.int))
+    result.insert(0, "id", value=range(startid, endid + 1, 1))
+    # print result
+    result = result.values
+    if(save_filename is not None):
+        np.savetxt(save_filename, result, delimiter=",", fmt='%d')
+    else:
+        print result
+    return result
+
+
+def predict_all_getbest(all_data, save_filename, trainAsTest=False, region=None, predict_function = None, epoch_n = 1):
+    """
+    预测所有商店后14天的值
+    :param all_data:
+    :param save_filename: trainAsTest为true,则存储predict+real的值,前面14列为predict,后面14列为real,否则只有前面14列
+    :param trainAsTest: 是否把训练集后14天当作测试集
+    :param region: shopid区域，list,[startid,endid]
+    :param predict_function: 预测单一商店的函数
+    :param epoch_n: 每个商店循环多少次,从中取出最好的模型进行预测
+    :return:
+    """
+    if predict_function is None:
+        raise Exception("predict_function is none")
+        return
+
+    if region is None:
+        startid = 1
+        endid = 2000
+    else:
+        startid = region[0]
+        endid = region[1]
+    size = endid - startid + 1
+
+    if not trainAsTest:
+        result = np.zeros((size, 14))
+        train_result = np.zeros((size, 28))
+    else:
+        result = np.zeros((size, 28))
+    real = np.ndarray(0)
+    for i in range(startid, endid + 1, 1):
+        shopid = i
+        print "shopid:", shopid
+        best_score = 1
+        best_model = None
+        for j in range(epoch_n):
+            train_predict, train_real_14, model = predict_function(shopid, all_data, True, None)
+            scoreoneshop1 = scoreoneshop(train_predict, train_real_14)
+            if(scoreoneshop1<best_score):
+                best_score = scoreoneshop1
+                best_model = model
+        print "best:", best_score
+        predict, real_14, model = predict_function(shopid, all_data, trainAsTest, best_model)
+        # predict = real_14 = np.arange(14)
+        if trainAsTest:
+            real = np.append(real, real_14)
+            predict = np.append(predict,real_14)
+        train_predict_real = np.append(train_predict, train_real_14)
+        result[i-startid] = predict
+        train_result[i-startid] = train_predict_real
+        gc.collect()
+
+
+    result = pd.DataFrame(result.astype(np.int))
+    train_result = pd.DataFrame(train_result.astype(int))
+    result.insert(0, "id", value=range(startid, endid + 1, 1))
+    train_result.insert(0, "id", value=range(startid, endid + 1, 1))
+    # print result
+    result = result.values
+    train_result = train_result.values
+    if(save_filename is not None):
+        np.savetxt(save_filename, result, delimiter=",", fmt='%d')
+        np.savetxt(save_filename+".train", train_result, delimiter=",", fmt='%d')
+    else:
+        print result
+    return result
+
+
+def predict_all_LSTM(all_data, save_filename, trainAsTest=False, region=None):
     """
     线性模型预测所有商店后14天的值
     :param all_data:
@@ -122,36 +239,7 @@ def predict_all_LSTM(all_data, save_filename,trainAsTest = False,region=None):
     :param region: shopid区域，list,[startid,endid]
     :return:
     """
-    if region is None:
-        startid = 1
-        endid = 2000
-    else:
-        startid = region[0]
-        endid = region[1]
-    size = endid - startid + 1
-    result = np.zeros((size, 14))
-    real = np.ndarray(0)
-    for i in range(startid, endid + 1, 1):
-        shopid = i
-        print "shopid:", shopid
-        predict, real_14 = predictOneShop_LSTM(shopid, all_data, trainAsTest)
-        # predict = real_14 = np.arange(14)
-        if trainAsTest:
-            real = np.append(real, real_14)
-        result[i-startid] = predict
-        gc.collect()
-    if trainAsTest:
-        predict = result.reshape((size * 14))
-        print "the final score : ", score(predict, real)
-    result = pd.DataFrame(result.astype(np.int))
-    result.insert(0, "id", value=range(startid, endid + 1, 1))
-    print result
-    result = result.values
-    if(save_filename is not None):
-        np.savetxt(save_filename, result, delimiter=",", fmt='%d')
-    else:
-        print result
-    return result
+    predict_all(all_data,save_filename,trainAsTest,region,predictOneShop_LSTM)
 
 
 def thread_worker(startid, num, all_data, q,lock):
@@ -202,11 +290,11 @@ def predict_all_LSTM_multithreads(all_data, save_filename, threadNum):
 
 if __name__ == "__main__":
     from sys import argv
-    startid = int(argv[1])
-    endid = int(argv[2])
+    # startid = int(argv[1])
+    # endid = int(argv[2])
     pay_info = pd.read_csv(Parameter.payAfterGroupingAndRevisionAndCompletion_path)
-    # print predictOneShop_LSTM(686, pay_info, True)
-    predict_all_LSTM(pay_info, Parameter.projectPath + 'result/lstm_14f%d.csv' % startid, False, [startid, endid])
+    print predictOneShop_LSTM(6, pay_info, True)
+    # predict_all_LSTM(pay_info, Parameter.projectPath + 'result/lstm_14f_train_%d.csv' % startid, True, [startid, endid])
     # predict_all_LSTM_multithreads(pay_info, Parameter.projectPath + "result/lstm_14f", 20)
 
 
