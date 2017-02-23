@@ -8,6 +8,7 @@ import pandas as pd
 from pandas import DataFrame,Series
 import datetime
 import Parameter
+import numpy as np
 
 holidayInfo = pd.read_csv(Parameter.holidayPath, names=["time","holiday"])
 holiday = holidayInfo["holiday"]
@@ -171,7 +172,7 @@ def getReplaceCount(part,method,window,currentindex):
     else:
         raise Exception("no replace method %s" % method)
 
-def reviseOneShop(part,windowRadious,method,replace_day_window,replace_sameday_window,multi,checkHoliday):
+def reviseOneShop(part,windowRadious,method,replace_day_window,replace_sameday_window,multi,checkHoliday,needRevise):
     """
     :param part:
     :param windowRadious:
@@ -180,6 +181,7 @@ def reviseOneShop(part,windowRadious,method,replace_day_window,replace_sameday_w
     :param replace_sameday_window:
     :param multi:
     :param checkHoliday:
+    :param needRevise
     :return: [count_list,time_list]
     """
     time=[]
@@ -196,6 +198,11 @@ def reviseOneShop(part,windowRadious,method,replace_day_window,replace_sameday_w
     for i in range(length):
         current_time = part[i][1]
         current_count = part[i][2]
+        #不需要修复直接放入
+        if not needRevise:
+            count.append(current_count)
+            time.append(current_time)
+            continue
         # current_weekday = part[i][3]
         #计算以当前天周围windowRadious的均值和方差
         pre_index = (i - windowRadious) if (i-windowRadious) >= 0 else 0
@@ -216,7 +223,7 @@ def reviseOneShop(part,windowRadious,method,replace_day_window,replace_sameday_w
             count.append(current_count)
             time.append(current_time)
     # print len(count)
-    return [count,time]
+    return [count, time]
 
 
 def turancate(part_data):
@@ -234,7 +241,7 @@ def turancate(part_data):
             start = start % 7 + 1
     return [count, time]
 
-def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_replace, replace_day_window=7, replace_sameday_window=2, multi = 3, checkHoliday=True,succession = None):
+def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_replace, replace_day_window=7, replace_sameday_window=2, multi = 3, checkHoliday=True,succession = None, needRevise = True):
     """
     :param data:
     :param saveFilePath:
@@ -245,6 +252,7 @@ def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_repla
     :param multi:=3,大于{multi}倍方差时检测异常
     :param checkHoliday: 检查节假日
     :param succession:day连续化，None为不连续化，succession_turncate为截断法连续化，completion为补全法连续化
+    :param needRevise:是否需要修正,默认为True
     :return:
     """
     if data.columns[0] != "shopid":
@@ -262,7 +270,8 @@ def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_repla
         print j
         pay_part = data[data["shopid"] == j]
         # pay_part.insert(3, "weekday", pay_part["time"].map(getWeekday))
-        count, time = reviseOneShop(pay_part,windowRadious,method,replace_day_window,replace_sameday_window,multi,checkHoliday)
+        count, time = reviseOneShop(pay_part,windowRadious,method,replace_day_window,replace_sameday_window,multi,checkHoliday,needRevise)
+
         frame = pd.DataFrame({"shopid": j, "time": time, "count": count})
 
 
@@ -289,4 +298,4 @@ def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_repla
 
 if __name__ == "__main__":
     data = pd.read_csv("data/user_pay_afterGrouping.csv")
-    reviseAll2(data, "data/user_pay_afterGroupingAndRevision2AndTurncate.csv", succession=succession_turncate)
+    reviseAll2(data, "data/user_pay_afterGroupingAndTurncate.csv", succession=succession_turncate,needRevise=False)

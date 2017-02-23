@@ -466,7 +466,7 @@ def predictAllShop_model_together(all_data, trainAsTest=False, model = None, sav
     '''预测所有商家'''
     preficts_all = None
     real_all = None
-    for j in range(1, 1+shop_need_to_predict, 1):
+    for j in range(1, 1 + shop_need_to_predict, 1):
         print "predict:", j
         preficts = []
         part_data = all_data[all_data.shopid == j]
