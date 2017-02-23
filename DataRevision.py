@@ -21,6 +21,8 @@ outlier_sameday_replace="outlier_sameday_replace"
 outlier_day_replace="outlier_day_replace"
 succession_completion = "succession_completion"
 succession_turncate = "succession_turncate"
+completion_sameday_mean = "completion_sameday_mean"
+completion_zero = "completion_zero"
 
 def getWeekday(dateString):
     """
@@ -79,20 +81,26 @@ def revise1(x,weekday__mean,weekday__std):
         current = mean
     return current
 
-def revise2(oneshop_pay_info,weekday__mean):
+def revise2(oneshop_pay_info,weekday__mean,completion_method):
     """
      3.对一些没有值的天也用均值代替
     :param oneshop_pay_info: 一家商店的所有数据
     :param weekday__mean: 一周中每天的均值(即星期一道星期天的各自均值)
+    :param completion_method
     :return:
     """
-    data_index = pd.DatetimeIndex([oneshop_pay_info["time"].values[0], oneshop_pay_info["time"].values[oneshop_pay_info.shape[0]-1]])
     completeData = Series(oneshop_pay_info["count"].values,index=pd.DatetimeIndex(oneshop_pay_info["time"].values)).resample("D").asfreq()
     # print completeData
     nan_values = completeData[pd.isnull(completeData.values)]
     for date in nan_values.index:
         weekday = getWeekday(date.strftime("%Y-%m-%d"))
-        completeData[date] = weekday__mean.ix[weekday]
+        if completion_method == completion_sameday_mean:
+            completeData[date] = weekday__mean.ix[weekday]
+        elif completion_method == completion_zero:
+            completeData[date] = 0
+        else:
+            raise Exception("completion method error")
+            return
     return completeData
 
 def reviseAll(data, saveFile, completion = False):
@@ -241,7 +249,7 @@ def turancate(part_data):
             start = start % 7 + 1
     return [count, time]
 
-def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_replace, replace_day_window=7, replace_sameday_window=2, multi = 3, checkHoliday=True,succession = None, needRevise = True):
+def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_replace, replace_day_window=7, replace_sameday_window=2, multi = 3, checkHoliday=True,succession = None, needRevise = True, completion_method = completion_sameday_mean):
     """
     :param data:
     :param saveFilePath:
@@ -253,6 +261,7 @@ def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_repla
     :param checkHoliday: 检查节假日
     :param succession:day连续化，None为不连续化，succession_turncate为截断法连续化，completion为补全法连续化
     :param needRevise:是否需要修正,默认为True
+    :param completion_method: 补全方法
     :return:
     """
     if data.columns[0] != "shopid":
@@ -281,7 +290,7 @@ def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_repla
             frame.insert(3,"weekday",frame["time"].map(getWeekday))
             weekday__groupby = frame[["count", "weekday"]].groupby("weekday")
             weekday__mean = weekday__groupby.mean()
-            completeData = revise2(frame, weekday__mean)
+            completeData = revise2(frame, weekday__mean,completion_method)
             frame = pd.DataFrame({"shopid":j,
                               "time":completeData.index,
                               "count":completeData.values})
