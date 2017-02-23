@@ -187,7 +187,7 @@ def extractBackWeekValue(part_data, backNum = 1, startNum = 0, nan_method=nan_me
                 if index < 0:
                     value = getReplaceValue(replace, nan_method, weekday[i])
                 else:
-                    value = count[index]
+                    value = count[int(index)]
                 weekday_values.append(value)
 
             if statistic_functon == statistic_functon_mean:
