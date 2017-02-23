@@ -515,10 +515,10 @@ def predictOneTrain_LR_Split(shopid, all_data, trainAsTest=False):
 if __name__ == "__main__":
     import Parameter
     #读取的是补全的商店信息
-    data = pd.read_csv(Parameter.meanfilteredAfterCompletion)
-    predict_all_LR_Split(data, "result/lr_split_2f.csv", False)
+    data = pd.read_csv(Parameter.payAfterGroupingAndRevision2AndTurncate_path)
+    # predict_all_LR_Split(data, "result/lr_split_2f.csv", False)
     # print predictOneTrain_LR_Split(1, data, True)
-    # predict_all(version=3, feature_size=2, save_filename="result/result_meanfilter_extra_resultfilter_f2.csv")
+    predict_all(version=3, feature_size=2, save_filename="result/result_meanfilter_extra_resultfilter_f2.csv")
     # print predictOneShop("food_csvfile3/1_trainset.csv",feature_size=2)
     # print predictOneShopInTrain("food_csvfile2/1243_trainset.csv",feature_size=2)[0]
     # prediceAndReal = predict_all_in_train(version=3, feature_size=4)

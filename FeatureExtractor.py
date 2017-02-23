@@ -71,7 +71,7 @@ def extractBackDayByNCycle(part_data, backNum = 1, startNum = 0, nan_method=nan_
         raise Exception("parameter nan_method error")
         return
     if(startNum <0 or startNum > part_data.shape[0]):
-        raise Exception("parameter skipNum error")
+        raise Exception("parameter startNum error")
         return
     if(backNum<1):
         raise Exception("parameter backNum error")
@@ -236,7 +236,7 @@ if __name__ == "__main__":
     # print sameday
     # print getOneWeekdayFomExtractedData(sameday, 5).shape
 
-    weekdays = extractWeekday(part_data,100)
+    weekdays = extractWeekday(part_data, 100)
     print weekdays
     print getOneWeekdayFomExtractedData(weekdays)
 

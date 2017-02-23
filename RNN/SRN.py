@@ -13,8 +13,7 @@ from keras.optimizers import RMSprop
 from keras.regularizers import l2, activity_l2
 from keras import backend as K
 from keras.layers import LSTM
-from lv import toInt
-from lv import removeNegetive
+from lv import toInt,removeNegetive
 from sklearn.preprocessing import MinMaxScaler
 from FeatureExtractor import *
 import datetime

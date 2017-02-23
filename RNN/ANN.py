@@ -122,7 +122,7 @@ def predictOneShop_ANN(shopid, all_data, trainAsTest=False):
         last_14_real_y = (removeNegetive(toInt(np.array(last_14_real_y)))).astype(int)
         # print preficts,last_14_real_y
         print str(shopid)+',score:', scoreoneshop(preficts, last_14_real_y)
-    return [preficts, last_14_real_y,model]
+    return [preficts, last_14_real_y]
 
 def predictOneShop_ANN2(shopid, all_data, trainAsTest=False, best_model=None):
     """
@@ -516,5 +516,5 @@ if __name__ == "__main__":
         endid = int(argv[2])
         predict_all_getbest(pay_info, Parameter.projectPath + "result/ANN_9f_best_%d.csv" % startid, False, [startid, endid], predictOneShop_ANN2, 10)
     else:
-        predict_all_getbest(pay_info, Parameter.projectPath + "result/ANN_9f_best_%d.csv", False, [6, 6], predictOneShop_ANN2, 10)
-        # print predictOneShop_ANN(13, pay_info, True)
+        # predict_all_getbest(pay_info, Parameter.projectPath + "result/ANN_9f_best_%d.csv", False, [6, 6], predictOneShop_ANN2, 10)
+        print predictOneShop_ANN(1528, pay_info, True)
