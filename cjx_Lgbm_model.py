@@ -17,7 +17,7 @@ from sklearn.metrics import mean_squared_error
 # encoding=utf-8
 
 # Naive LSTM to learn three-char time steps to one-char mapping
-cur_thread_num = 20;
+cur_thread_num = 20
 # 序列长度设为7
 seq_length = 7
 dateparser1 = para.dateparse1
