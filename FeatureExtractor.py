@@ -4,7 +4,7 @@
 import numpy as np
 from DataRevision import getWeekday
 import pandas as pd
-
+import Parameter
 nan_method_global_mean = "global_mean" #全局平均
 nan_method_sameday_mean = "sameday_mean"#sameday平均
 
@@ -42,7 +42,7 @@ def extractCount(part_data,skipNum = 0):
 
 def extractWeekday(part_data, startNum = 0):
     """
-    从{startNum}开始抽取前{backNum}的day的值, 排列按照前面第一天，前面第二天这样由近就及远排放
+    从{startNum}开始抽取weekday的值,
     :param part_data:需要含有两列组成，一列为count,另一列为time,注意这里的数据是要按日期补全的数据，不然会有不对应的情况
     :param startNum: 前面跳过的样例数，也就是从第{startNum}开始生成
     :return: ndarray,第一列为weekday
@@ -205,6 +205,65 @@ def extractBackWeekValue(part_data, backNum = 1, startNum = 0, nan_method=nan_me
     dataX = np.reshape(dataX, (part_data.shape[0] - startNum, backNum + 1))
     return dataX
 
+def extractWorkOrWeekend(part_data,startNum = 0):
+    """
+    从{startNum}开始抽取是工作日还是周末值,
+    :param part_data:需要含有两列组成，一列为count,另一列为time,注意这里的数据是要按日期补全的数据，不然会有不对应的情况
+    :param startNum: 前面跳过的样例数，也就是从第{startNum}开始生成
+    :return: ndarray,第一列为workOrWeekend,第2列为哪个样例的日期,0为work,1为weekend
+    """
+    if(startNum <0 or startNum >= part_data.shape[0]):
+        raise Exception("parameter skipNum error")
+        return
+    #先加入weekday一列，方便后面处理
+    if "weekday" not in part_data.columns:
+        part_data.insert(3, "weekday", part_data["time"].map(getWeekday))
+    workOrWeekends = []
+    weekds = part_data["weekday"].values.tolist()
+    tims = part_data["time"].values.tolist()
+    for i in range(startNum, part_data.shape[0], 1):
+        weekd = weekds[i]
+        workOrWeekends.append(1 if (weekd ==6 or weekd == 7) else 0)
+        workOrWeekends.append(tims[i])
+    workOrWeekends = np.reshape(workOrWeekends,(len(workOrWeekends)/2,2))
+    return workOrWeekends
+
+
+def extractWeatherInfo(part_data,startNum = 0,city_name = None):
+    """
+    从{startNum}开始抽取天气信息，晴或者多云或者小雨为0(转中雨不包含), 其他为1
+    :param part_data:需要含有两列组成，一列为count,另一列为time,注意这里的数据是要按日期补全的数据，不然会有不对应的情况
+    :param startNum: 前面跳过的样例数，也就是从第{startNum}开始生成
+    :param city_name: 城市名字
+    :return: ndarray,第一列为workOrWeekend,第2列为哪个样例的日期,0为work,1为weekend
+    """
+    if city_name is None:
+        raise Exception("city name is None")
+        return
+    if(startNum <0 or startNum >= part_data.shape[0]):
+        raise Exception("parameter skipNum error")
+        return
+    weathers = []
+    times = part_data["time"].values
+    weather_ = Parameter.getWeather_info()
+    weather_part = weather_[weather_.area == city_name][["date", "weather"]]
+    for i in range(startNum, part_data.shape[0], 1):
+        time = times[i]
+        v = weather_part[weather_part.date == time.replace("-", "/")]["weather"].values
+        if(len(v) == 0 or pd.isnull(v[0])):
+            v = 0
+        else:
+            v = v[0]
+            if "云" in v or "晴" in v or ("小雨" in v and "阴" in v):
+                v = 0
+            else:
+                v = 1
+        weathers.append(v)
+        weathers.append(time)
+
+    weathers = np.reshape(weathers,(len(weathers)/2,2))
+    return weathers
+
 def getOneWeekdayFomExtractedData(extractData, weekday = 0):
     """
     在已经抽取的数据上取出周{weekday}的所有值，并去除时间一列,同时将前面的值转换成浮点
@@ -224,19 +283,42 @@ def getOneWeekdayFomExtractedData(extractData, weekday = 0):
         data = np.delete(data, extractData.shape[1] - 1, axis=1).astype(float)
     return data
 
+
+def onehot(data):
+    """
+
+    :param data: 某一列数据
+    :return: encoder
+    """
+    from sklearn.preprocessing import OneHotEncoder
+    temp = np.unique(data)
+    temp2 = []
+    for i in range(len(temp)):
+        temp2.append([temp[i]])
+    return OneHotEncoder(sparse=False).fit(temp2)
+
+
+def labelEncoder(data):
+    from sklearn.preprocessing import LabelEncoder
+    encoder = LabelEncoder().fit(data)
+    return encoder
+
+
 if __name__ == "__main__":
 
     import Parameter
 
     data = pd.read_csv(Parameter.meanfilteredAfterCompletion)
-    part_data = data[data.shopid == 1]
+    part_data = data[data.shopid == 2]
     # print part_data
     #
     # sameday = extractBackWeekValue(part_data, 3, 0, nan_method_sameday_mean, statistic_functon_mean)
     # print sameday
     # print getOneWeekdayFomExtractedData(sameday, 5).shape
 
-    weekdays = extractWeekday(part_data, 100)
-    print weekdays
-    print getOneWeekdayFomExtractedData(weekdays)
-
+    # weekdays = extractWeekday(part_data, 100)
+    # print weekdays
+    # weeks = extractWorkOrWeekend(part_data, 0)
+    # w = getOneWeekdayFomExtractedData(weeks)
+    # print onehot(w).transform([1]).toarray()
+    print extractWeatherInfo(part_data, 0, "三明")
