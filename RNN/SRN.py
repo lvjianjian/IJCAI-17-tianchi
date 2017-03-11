@@ -24,6 +24,7 @@ import gc
 from sys import getrefcount
 
 def my_loss(y_true,y_predict):
+    K.clip()
     return K.mean(abs((y_predict-y_true)/(y_predict+y_true)), axis = -1)
 
 def predictOneShop_LSTM(shopid, all_data, trainAsTest=False):

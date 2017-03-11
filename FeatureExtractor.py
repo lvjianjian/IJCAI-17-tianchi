@@ -18,7 +18,7 @@ def getReplaceValue(replace, method, weekday):
     if method == nan_method_global_mean:
         return replace[0]
     elif method == nan_method_sameday_mean:
-        return replace[weekday - 1]
+        return replace[int(weekday) - 1]
 
 
 def extractCount(part_data,skipNum = 0):
@@ -40,6 +40,7 @@ def extractCount(part_data,skipNum = 0):
     dataY = np.reshape(dataY, (part_data.shape[0] - skipNum, 2))
     return dataY
 
+
 def extractWeekday(part_data, startNum = 0):
     """
     从{startNum}开始抽取weekday的值,
@@ -48,7 +49,6 @@ def extractWeekday(part_data, startNum = 0):
     :return: ndarray,第一列为weekday
             第2列为哪个样例的日期
     """
-
     #先加入weekday一列，方便后面处理
     if "weekday" not in part_data.columns:
         part_data.insert(3, "weekday", part_data["time"].map(getWeekday))

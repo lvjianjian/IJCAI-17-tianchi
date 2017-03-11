@@ -307,4 +307,4 @@ def reviseAll2(data,saveFilePath, windowRadious=30, method=outlier_sameday_repla
 
 if __name__ == "__main__":
     data = pd.read_csv("data/user_pay_afterGrouping.csv")
-    reviseAll2(data, "data/user_pay_afterGroupingAndTurncate.csv", succession=succession_turncate,needRevise=False)
+    reviseAll2(data, "data/user_pay_test_offline.csv", succession=None,needRevise=False,completion_method=completion_zero)
